@@ -1,20 +1,21 @@
-from rest_framework import generics, status
+from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
+from drf_spectacular.utils import extend_schema
+
 from .models import Notification
-from .serializers import NotificationSerializer
+from .serializers import (
+    NotificationSerializer,
+    MarkNotificationReadSerializer,
+)
 
 
 # -------------------------
 # LIST NOTIFICATIONS
 # -------------------------
 class NotificationListView(generics.ListAPIView):
-    """
-    Returns all notifications for the logged-in user.
-    """
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -25,41 +26,45 @@ class NotificationListView(generics.ListAPIView):
 
 
 # -------------------------
-# MARK SINGLE NOTIFICATION AS READ
+# MARK ONE AS READ (CLEAN GENERIC VIEW)
 # -------------------------
-class MarkNotificationReadView(APIView):
+@extend_schema(
+    request=MarkNotificationReadSerializer,
+    responses=NotificationSerializer,
+)
+class MarkNotificationReadView(generics.GenericAPIView):
+    serializer_class = MarkNotificationReadSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pk):
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         notification = get_object_or_404(
             Notification,
-            id=pk,
-            user=request.user
+            id=serializer.validated_data["id"],
+            user=request.user,
         )
 
         notification.is_read = True
         notification.save()
 
-        return Response(
-            {"message": "Notification marked as read"},
-            status=status.HTTP_200_OK
-        )
+        return Response(NotificationSerializer(notification).data)
 
 
 # -------------------------
-# MARK ALL NOTIFICATIONS AS READ
+# MARK ALL AS READ
 # -------------------------
-class MarkAllNotificationsReadView(APIView):
+@extend_schema(
+    responses={"200": {"type": "object", "properties": {"message": {"type": "string"}}}},
+)
+class MarkAllNotificationsReadView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-
         Notification.objects.filter(
             user=request.user,
             is_read=False
         ).update(is_read=True)
 
-        return Response(
-            {"message": "All notifications marked as read"},
-            status=status.HTTP_200_OK
-        )
+        return Response({"message": "All notifications marked as read"})

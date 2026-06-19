@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Vendor, VendorStaff, Branch
+from .models import Vendor, VendorStaff, Branch, VendorInvitation, VendorSettings
 
 
 class VendorSerializer(serializers.ModelSerializer):
@@ -141,3 +141,60 @@ class BranchSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+
+class VendorInvitationCreateSerializer(serializers.Serializer):
+    vendor = serializers.PrimaryKeyRelatedField(queryset=Vendor.objects.all())
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(
+        choices=[c for c in VendorStaff.ROLE_CHOICES if c[0] != "owner"]
+    )
+
+
+class VendorInvitationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorInvitation
+        fields = [
+            "id",
+            "vendor",
+            "email",
+            "role",
+            "status",
+            "created_at",
+            "expires_at",
+            "accepted_at",
+        ]
+        read_only_fields = fields
+
+
+class AcceptInvitationSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+
+
+class RejectInvitationSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
+class VendorSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorSettings
+        fields = [
+            "business_registration_number",
+            "tax_id",
+            "currency",
+            "enable_email_notifications",
+            "enable_inventory_alerts",
+            "enable_order_notifications",
+            "enable_delivery_updates",
+            "auto_process_payments",
+            "payment_settlement_days",
+            "allow_orders_when_low_stock",
+            "auto_assign_deliveries",
+            "updated_at",
+        ]
+        read_only_fields = ["updated_at"]
+
+class ResendInvitationSerializer(serializers.Serializer):
+    pass

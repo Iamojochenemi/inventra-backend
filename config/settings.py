@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
+    'drf_spectacular',
 
     'apps.accounts',
     'apps.vendors',
@@ -45,6 +47,8 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.deliveries',
     'apps.analytics',
+    'apps.payments',
+    'apps.audit_logs',
     'rest_framework',
 ]
 
@@ -129,13 +133,19 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 AUTH_USER_MODEL = "accounts.User"
+
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # ----------------------------
@@ -155,3 +165,34 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
 CELERY_TASK_TRACK_STARTED = True
+
+# ----------------------------
+# PAYSTACK CONFIGURATION
+# ----------------------------
+
+PAYSTACK_PUBLIC_KEY = config("PAYSTACK_PUBLIC_KEY", default="")
+
+PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY", default="")
+
+# ----------------------------
+# EMAIL CONFIGURATION
+# ----------------------------
+
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@inventra.com")
+
+# Email templates directory
+TEMPLATES[0]['DIRS'] = [BASE_DIR / 'templates']
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Inventra API",
+    "VERSION": "1.0.0",
+}

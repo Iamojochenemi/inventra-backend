@@ -13,3 +13,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             "is_read",
             "created_at",
         ]
+
+
+class MarkNotificationReadSerializer(serializers.Serializer):
+    id = serializers.IntegerField()

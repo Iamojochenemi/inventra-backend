@@ -16,4 +16,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+
+        request = self.context.get("request")
+        from apps.accounts.services.auth_service import send_verification_email
+        send_verification_email(user, request)
+
         return user

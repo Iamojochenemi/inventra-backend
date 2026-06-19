@@ -9,7 +9,6 @@ class Order(models.Model):
         ("cancelled", "Cancelled"),
     )
 
-    # 🔥 ORDER FLOW RULES (STATE MACHINE)
     ALLOWED_TRANSITIONS = {
         "pending": ["confirmed", "cancelled"],
         "confirmed": ["completed", "cancelled"],
@@ -53,6 +52,13 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # 🔥 SOURCE OF TRUTH FOR PRICING
+    def calculate_total(self):
+        return sum(
+            item.quantity * item.unit_price
+            for item in self.items.all()
+        )
+
     def __str__(self):
         return f"Order #{self.id} - {self.vendor.name}"
 
@@ -78,7 +84,8 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
-    
+
+
 class OrderStatusLog(models.Model):
     order = models.ForeignKey(
         Order,

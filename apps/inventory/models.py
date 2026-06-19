@@ -2,6 +2,34 @@ from django.db import models
 from django.utils.crypto import get_random_string
 
 
+class Warehouse(models.Model):
+    """Warehouse model for storing inventory at specific locations."""
+    vendor = models.ForeignKey(
+        "vendors.Vendor",
+        on_delete=models.CASCADE,
+        related_name="warehouses"
+    )
+
+    branch = models.ForeignKey(
+        "vendors.Branch",
+        on_delete=models.CASCADE,
+        related_name="warehouses"
+    )
+
+    name = models.CharField(max_length=255)
+    address = models.TextField(blank=True)
+    capacity = models.PositiveIntegerField(default=1000, help_text="Maximum items warehouse can hold")
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["vendor", "branch", "name"]
+
+    def __str__(self):
+        return f"{self.vendor.name} - {self.branch.name} - {self.name}"
+
+
 class Category(models.Model):
     vendor = models.ForeignKey(
         "vendors.Vendor",
@@ -79,6 +107,15 @@ class Inventory(models.Model):
         related_name="inventory_records"
     )
 
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.CASCADE,
+        related_name="inventory_records",
+        null=True,
+        blank=True,
+        help_text="Specific warehouse within the branch (optional)"
+    )
+
     quantity = models.PositiveIntegerField(default=0)
 
     low_stock_threshold = models.PositiveIntegerField(default=5)
@@ -86,7 +123,7 @@ class Inventory(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ["product", "branch"]
+        unique_together = ["product", "branch", "warehouse"]
 
     def is_low_stock(self):
         return self.quantity <= self.low_stock_threshold

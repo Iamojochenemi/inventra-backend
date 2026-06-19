@@ -3,6 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiParameter
+
 from .models import (
     Category,
     Product,
@@ -23,6 +25,18 @@ from apps.vendors.services import validate_vendor_access
 # ------------------------
 # CATEGORY
 # ------------------------
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Inventory"],
+        summary="Create Category",
+        description="Create a product category under a vendor.",
+        responses={
+            201: CategorySerializer,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Permission denied"),
+        },
+    )
+)
 class CategoryCreateView(generics.CreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -43,6 +57,18 @@ class CategoryCreateView(generics.CreateAPIView):
 # ------------------------
 # PRODUCT
 # ------------------------
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Inventory"],
+        summary="Create Product",
+        description="Create a product and initialize its inventory across branches.",
+        responses={
+            201: ProductSerializer,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Permission denied"),
+        },
+    )
+)
 class ProductCreateView(generics.CreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -72,6 +98,19 @@ class ProductCreateView(generics.CreateAPIView):
 # ------------------------
 # INVENTORY ADJUSTMENT
 # ------------------------
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Inventory"],
+        summary="Adjust Inventory",
+        description="Increase or decrease product stock and log the change.",
+        request=InventoryAdjustmentSerializer,
+        responses={
+            200: OpenApiResponse(description="Inventory updated successfully"),
+            400: OpenApiResponse(description="Invalid adjustment request"),
+            403: OpenApiResponse(description="Permission denied"),
+        },
+    )
+)
 class InventoryAdjustmentView(generics.GenericAPIView):
     serializer_class = InventoryAdjustmentSerializer
     permission_classes = [IsAuthenticated]
@@ -97,6 +136,8 @@ class InventoryAdjustmentView(generics.GenericAPIView):
             ]
         )
 
+        old_quantity = inventory.quantity
+
         with transaction.atomic():
 
             log = InventoryLog.objects.create(
@@ -108,8 +149,22 @@ class InventoryAdjustmentView(generics.GenericAPIView):
             )
 
             result = log.apply_inventory_change()
-
             inventory = result["inventory"]
+
+            from apps.audit_logs.services import create_audit_log
+
+            create_audit_log(
+                user=request.user,
+                obj=inventory,
+                action="update",
+                old_values={"quantity": old_quantity},
+                new_values={
+                    "quantity": inventory.quantity,
+                    "adjustment_type": adjustment_type,
+                    "reason": reason,
+                },
+                reason="Inventory adjustment"
+            )
 
         return Response(
             {
@@ -123,8 +178,34 @@ class InventoryAdjustmentView(generics.GenericAPIView):
 
 
 # ------------------------
-# INVENTORY
+# INVENTORY LIST
 # ------------------------
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Inventory"],
+        summary="List Inventory",
+        description="List all inventory records accessible to the authenticated user.",
+        parameters=[
+            OpenApiParameter(
+                name="branch",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by branch ID",
+            ),
+            OpenApiParameter(
+                name="product",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by product ID",
+            ),
+        ],
+        responses={
+            200: InventorySerializer(many=True),
+        },
+    )
+)
 class InventoryListView(generics.ListAPIView):
     serializer_class = InventorySerializer
     permission_classes = [IsAuthenticated]
@@ -135,12 +216,10 @@ class InventoryListView(generics.ListAPIView):
         )
 
         branch_id = self.request.query_params.get("branch")
-
         if branch_id:
             queryset = queryset.filter(branch_id=branch_id)
 
         product_id = self.request.query_params.get("product")
-
         if product_id:
             queryset = queryset.filter(product_id=product_id)
 

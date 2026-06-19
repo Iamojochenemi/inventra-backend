@@ -11,31 +11,29 @@ from .serializers import DeliverySerializer
 from apps.vendors.models import VendorStaff
 from apps.notifications.services import create_notification
 
+from apps.audit_logs.services import create_audit_log
+
 
 class DeliveryViewSet(viewsets.ReadOnlyModelViewSet):
-
-    queryset = Delivery.objects.select_related(
-        "order",
-        "assigned_rider"
-    ).all()
 
     serializer_class = DeliverySerializer
     permission_classes = [IsAuthenticated]
 
-    # -------------------------
-    # ROLE + TENANT SAFE STAFF RESOLUTION
-    # -------------------------
+    def get_queryset(self):
+        return Delivery.objects.select_related(
+            "order",
+            "assigned_rider",
+        ).filter(
+            order__vendor__staff__user=self.request.user,
+        ).distinct()
+
     def get_staff(self, user, delivery):
-        """
-        Get staff record scoped to the delivery's vendor.
-        Prevents cross-vendor access issues.
-        """
         return user.vendorstaff_set.filter(
             vendor=delivery.order.vendor
         ).first()
 
     # -------------------------
-    # ASSIGN RIDER (DISPATCHER ONLY)
+    # ASSIGN RIDER
     # -------------------------
     @action(detail=True, methods=["post"])
     def assign_rider(self, request, pk=None):
@@ -58,12 +56,33 @@ class DeliveryViewSet(viewsets.ReadOnlyModelViewSet):
         delivery.status = "assigned"
         delivery.save()
 
+        # -------------------------
+        # DELIVERY LOG
+        # -------------------------
         DeliveryLog.objects.create(
             delivery=delivery,
             event_type="rider_assignment",
             previous_value=str(old_rider.id) if old_rider else "",
             new_value=str(rider.id),
             changed_by=request.user
+        )
+
+        # -------------------------
+        # AUDIT LOG (NEW)
+        # -------------------------
+        create_audit_log(
+            user=request.user,
+            obj=delivery,
+            action="update",
+            old_values={
+                "assigned_rider": old_rider.id if old_rider else None,
+                "status": "pending"
+            },
+            new_values={
+                "assigned_rider": rider.id,
+                "status": "assigned"
+            },
+            reason="Rider assigned to delivery"
         )
 
         # -------------------------
@@ -84,7 +103,7 @@ class DeliveryViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
     # -------------------------
-    # UPDATE DELIVERY STATUS (RIDER ONLY)
+    # UPDATE DELIVERY STATUS
     # -------------------------
     @action(detail=True, methods=["post"])
     def update_status(self, request, pk=None):
@@ -122,16 +141,12 @@ class DeliveryViewSet(viewsets.ReadOnlyModelViewSet):
 
         delivery.status = new_status
 
-        # -------------------------
-        # DELIVERY COMPLETION (PROOF)
-        # -------------------------
         if new_status == "delivered":
             delivery.delivered_at = timezone.now()
 
             if recipient_name:
                 delivery.recipient_name = recipient_name
 
-            # optional: notify order creator on completion
             create_notification(
                 user=delivery.order.created_by,
                 type="delivery",
@@ -141,12 +156,30 @@ class DeliveryViewSet(viewsets.ReadOnlyModelViewSet):
 
         delivery.save()
 
+        # -------------------------
+        # DELIVERY LOG
+        # -------------------------
         DeliveryLog.objects.create(
             delivery=delivery,
             event_type="status_change",
             previous_value=old_status,
             new_value=new_status,
             changed_by=request.user
+        )
+
+        # -------------------------
+        # AUDIT LOG (NEW)
+        # -------------------------
+        create_audit_log(
+            user=request.user,
+            obj=delivery,
+            action="update",
+            old_values={"status": old_status},
+            new_values={
+                "status": new_status,
+                "recipient_name": recipient_name
+            },
+            reason="Delivery status update"
         )
 
         return Response({
