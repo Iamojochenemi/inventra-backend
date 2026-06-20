@@ -1,4 +1,5 @@
 # Inventra — Multi-Tenant Inventory & Order Management Platform
+![Test Coverage](https://img.shields.io/badge/coverage-77.51%25-brightgreen?style=flat-square&logo=pytest)
 
 A production-ready, multi-tenant backend platform for inventory management, order processing, payment orchestration, delivery logistics, and business analytics across multiple independent vendors.
 
