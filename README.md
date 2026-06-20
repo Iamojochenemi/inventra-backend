@@ -389,6 +389,17 @@ See `.env.template` for the complete configuration reference.
 
 ---
 
+# API Documentation
+
+![Live Swagger Specs](docs/Swagger.png)
+
+The screenshot above shows the auto-generated Swagger/OpenAPI specification for all API endpoints. You can explore and test the live API interactively at:
+- **Swagger UI:** `/api/swagger/`
+- **ReDoc:** `/api/redoc/`
+- **Schema (JSON):** `/api/schema/`
+
+---
+
 # License
 
 Proprietary — All rights reserved.
