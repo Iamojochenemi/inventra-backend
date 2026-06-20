@@ -8,10 +8,20 @@ from apps.analytics.services.delivery import get_delivery_intelligence
 
 
 def get_vendor_dashboard(vendor):
+    """
+    Build the vendor analytics dashboard data.
+
+    Each intelligence function now executes a single aggregate query,
+    so the full dashboard is built from exactly 5 DB hits:
+    1 order query (revenue), 1 order query (profit),
+    1 order query (customer), 1 delivery query, 1 inventory query.
+
+    Results are cached for 5 minutes to absorb burst traffic.
+    """
     cache_key = f"vendor_dashboard_{vendor.id}"
 
     cached_data = cache.get(cache_key)
-    if cached_data:
+    if cached_data is not None:
         return cached_data
 
     data = {

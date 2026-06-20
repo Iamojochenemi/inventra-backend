@@ -12,9 +12,35 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from decouple import config
+import json
+import logging
+from config.middleware import request_id_var as _request_id_var
+
+# ────────────────────────────────────────────────────────────
+#  LOG LEVEL ENVIRONMENT VARIABLES
+# ────────────────────────────────────────────────────────────
+# LOG_LEVEL          — Root logger level          (default: INFO)
+# DJANGO_LOG_LEVEL   — Django framework level     (default: INFO)
+# APP_LOG_LEVEL      — Application code level     (default: INFO)
+# ────────────────────────────────────────────────────────────
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# ----------------------------
+# SENTRY (production/staging only)
+# ----------------------------
+if not config("DEBUG", default=False, cast=bool):
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=config("SENTRY_DSN", default=""),
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True,
+    )
 
 
 # Quick-start development settings - unsuitable for production
@@ -53,6 +79,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Must be first: stamps X-Request-ID on every request
+    'config.middleware.RequestTracingMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -132,6 +160,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -152,9 +181,9 @@ REST_FRAMEWORK = {
 # CELERY CONFIGURATION
 # ----------------------------
 
-CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="redis://localhost:6379/0")
 
 CELERY_ACCEPT_CONTENT = ["json"]
 
@@ -165,6 +194,29 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
 CELERY_TASK_TRACK_STARTED = True
+
+# ----------------------------
+# CACHE CONFIGURATION (Redis)
+# ----------------------------
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": config("REDIS_CACHE_URL", default="redis://localhost:6379/1"),
+        "TIMEOUT": 300,  # 5 minutes default
+        "KEY_PREFIX": "inventra",
+    },
+    "sessions": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": config("REDIS_CACHE_URL", default="redis://localhost:6379/1"),
+        "TIMEOUT": 86400,  # 24 hours — sessions live longer than data cache
+        "KEY_PREFIX": "inventra_sessions",
+    },
+}
+
+# Use Redis-backed sessions for fast, stateless scaling
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "sessions"
 
 # ----------------------------
 # PAYSTACK CONFIGURATION
@@ -194,5 +246,142 @@ TEMPLATES[0]['DIRS'] = [BASE_DIR / 'templates']
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Inventra API",
+    "DESCRIPTION": "Inventra backend API documentation",
     "VERSION": "1.0.0",
+
+    # makes schema generation more stable with large projects
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_COERCE_PATH_PK_SUFFIX": True,
+
+    # prevents enum collision issues from breaking generation
+    "ENUM_NAME_OVERRIDES": {
+        "DeliveryStatusEnum": "apps.deliveries.models.Delivery.STATUS_CHOICES",
+        "UserRoleEnum": [
+            ("admin", "Admin"),
+            ("manager", "Manager"),
+            ("staff", "Staff"),
+            ("vendor", "Vendor"),
+        ],
+    },
+
+    # keeps schema generation from crashing on non-critical issues
+    "DISABLE_ERRORS_AND_WARNINGS": False,
+
+    # optional but helpful for large DRF projects
+    "SERVE_INCLUDE_SCHEMA": False,
+    'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest',
+    'SWAGGER_UI_FAVICON_HREF': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest/favicon-32x32.png',
+}
+
+# ----------------------------
+# STRUCTURED JSON LOGGING
+# ----------------------------
+
+
+class JSONFormatter(logging.Formatter):
+    """
+    Output every log record as a single-line JSON object.
+
+    Compatible with log aggregators (Datadog, ELK, Grafana Loki, etc.)
+    and avoids multi-line log races in containerised environments.
+    """
+
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+            "process": record.process,
+            "thread": record.thread,
+            "request_id": _request_id_var.get(),
+            "message": record.getMessage(),
+        }
+
+        # Attach exception details when present
+        if record.exc_info and record.exc_info[0]:
+            log_record["exception"] = self.formatException(record.exc_info)
+
+        # Attach request info if the logger added it via extra=
+        request = getattr(record, "request", None)
+        if request:
+            log_record["request"] = {
+                "method": request.method,
+                "path": request.path,
+                "user": str(getattr(request, "user", "anonymous")),
+            }
+
+        return json.dumps(log_record, default=str)
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": JSONFormatter,
+        },
+        "verbose": {
+            "format": "[{levelname}] {asctime} {module}.{funcName}:{lineno} — {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "console_json": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "stream": "ext://sys.stdout",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+            "filters": ["require_debug_true"],
+        },
+    },
+    "root": {
+        "handlers": ["console_json", "console"],
+        "level": config("LOG_LEVEL", default="INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console_json"],
+            "level": config("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console_json"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console_json"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console_json"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Application loggers
+        "apps": {
+            "handlers": ["console_json"],
+            "level": config("APP_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+    },
 }

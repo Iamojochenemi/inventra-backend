@@ -4,7 +4,15 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 
-from .serializers import RegisterSerializer
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+
+from .serializers import (
+    RegisterSerializer,
+    VerifyEmailSerializer,
+    ResendVerificationSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
+)
 from .permissions import IsAdminOrVendor
 from .services.auth_service import (
     send_verification_email,
@@ -16,13 +24,19 @@ from .services.auth_service import (
 User = get_user_model()
 
 
+@extend_schema(
+    tags=["Auth"],
+    summary="Register a new user",
+    description="Creates a user account and sends a verification email.",
+    responses={
+        201: RegisterSerializer,
+        400: OpenApiResponse(description="Validation error"),
+    },
+)
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
-
-
-from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 @extend_schema(
     tags=["Auth"],
@@ -30,12 +44,15 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
     responses={
         200: OpenApiResponse(
             response={
-                "id": int,
-                "email": str,
-                "username": str,
-                "role": str,
-                "phone_number": str,
-                "email_verified": bool,
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "email": {"type": "string"},
+                    "username": {"type": "string"},
+                    "role": {"type": "string"},
+                    "phone_number": {"type": "string"},
+                    "email_verified": {"type": "boolean"},
+                },
             }
         )
     },
@@ -74,14 +91,12 @@ class TestProtectedView(APIView):
 @extend_schema(
     tags=["Auth"],
     summary="Verify email",
-    request={
-        "type": "object",
-        "properties": {
-            "token": {"type": "string"}
-        },
-        "required": ["token"],
+    description="Verify a user's email address using a token sent via email.",
+    request=VerifyEmailSerializer,
+    responses={
+        200: OpenApiResponse(description="Email verified successfully"),
+        400: OpenApiResponse(description="Invalid or expired token"),
     },
-    responses={200: OpenApiResponse(description="Email verified")},
 )
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
@@ -101,12 +116,11 @@ class VerifyEmailView(APIView):
 @extend_schema(
     tags=["Auth"],
     summary="Resend verification email",
-    request={
-        "type": "object",
-        "properties": {
-            "email": {"type": "string"}
-        },
-        "required": ["email"],
+    description="Resend the email verification link to a user's email address.",
+    request=ResendVerificationSerializer,
+    responses={
+        200: OpenApiResponse(description="Verification email sent (or email already verified)"),
+        400: OpenApiResponse(description="Email is required"),
     },
 )
 class ResendVerificationView(APIView):
@@ -132,12 +146,11 @@ class ResendVerificationView(APIView):
 @extend_schema(
     tags=["Auth"],
     summary="Request password reset",
-    request={
-        "type": "object",
-        "properties": {
-            "email": {"type": "string"}
-        },
-        "required": ["email"],
+    description="Send a password reset email to the given email address if it exists.",
+    request=PasswordResetRequestSerializer,
+    responses={
+        200: OpenApiResponse(description="If the email exists, a reset link was sent"),
+        400: OpenApiResponse(description="Email is required"),
     },
 )
 class PasswordResetRequestView(APIView):
@@ -160,13 +173,11 @@ class PasswordResetRequestView(APIView):
 @extend_schema(
     tags=["Auth"],
     summary="Confirm password reset",
-    request={
-        "type": "object",
-        "properties": {
-            "token": {"type": "string"},
-            "password": {"type": "string"},
-        },
-        "required": ["token", "password"],
+    description="Reset the password using a valid reset token.",
+    request=PasswordResetConfirmSerializer,
+    responses={
+        200: OpenApiResponse(description="Password has been reset successfully"),
+        400: OpenApiResponse(description="Invalid or expired token"),
     },
 )
 class PasswordResetConfirmView(APIView):

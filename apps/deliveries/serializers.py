@@ -41,3 +41,21 @@ class DeliveryLogSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
         ]
+
+
+class AssignRiderSerializer(serializers.Serializer):
+    rider_id = serializers.IntegerField(
+        help_text="ID of the VendorStaff member to assign as rider"
+    )
+
+
+class UpdateDeliveryStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[c[0] for c in Delivery.STATUS_CHOICES],
+        help_text="New delivery status",
+    )
+    recipient_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Recipient name (required for 'delivered' status)",
+    )

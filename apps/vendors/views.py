@@ -27,11 +27,11 @@ from apps.vendors.services.access_service import validate_vendor_access
 from apps.vendors.services.vendor_service import get_user_vendors
 from apps.vendors.services import (
     create_invitation,
-    send_invitation_email,
     accept_invitation,
     reject_invitation,
     resend_invitation,
 )
+from apps.vendors.tasks import send_vendor_invitation_email_task
 
 
 # ------------------------
@@ -192,8 +192,10 @@ class VendorSettingsView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        vendor_id = self.kwargs["vendor_id"]
-        vendor = get_object_or_404(Vendor, id=vendor_id)
+        vendor = get_object_or_404(
+            get_user_vendors(self.request.user),
+            id=self.kwargs["vendor_id"],
+        )
 
         validate_vendor_access(
             vendor=vendor,
@@ -212,7 +214,11 @@ class VendorSettingsView(generics.RetrieveUpdateAPIView):
     tags=["Vendors"],
     summary="Create Invitation",
     description="Invite a user to join a vendor.",
-    responses={201: VendorInvitationSerializer},
+    request=VendorInvitationCreateSerializer,
+    responses={
+        201: VendorInvitationSerializer,
+        400: OpenApiResponse(description="Validation error or invitation failed"),
+    },
 )
 class InvitationCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -237,7 +243,7 @@ class InvitationCreateView(APIView):
                 created_by=request.user,
                 request=request,
             )
-            send_invitation_email(invitation, request)
+            send_vendor_invitation_email_task.delay(invitation.id)
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
 
@@ -331,7 +337,12 @@ class RejectInvitationView(APIView):
     tags=["Vendors"],
     summary="Resend Invitation",
     description="Resend a pending vendor invitation.",
-    responses={200: OpenApiResponse(description="Invitation resent")},
+    request=None,
+    responses={
+        200: OpenApiResponse(description="Invitation resent"),
+        400: OpenApiResponse(description="Failed to resend invitation"),
+        404: OpenApiResponse(description="Invitation not found"),
+    },
 )
 class ResendInvitationView(APIView):
     permission_classes = [IsAuthenticated]

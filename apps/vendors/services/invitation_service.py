@@ -43,13 +43,13 @@ def create_invitation(vendor, email, role, created_by, request=None):
             email=email,
             status="pending"
         ).first()
-        
+
         if existing_invitation and not existing_invitation.is_expired():
             raise ValueError(f"Active invitation already exists for {email}")
-        
+
         # Generate invitation token
         invitation_token = get_random_string(64)
-        
+
         # Create invitation (expires in 7 days)
         invitation = VendorInvitation.objects.create(
             vendor=vendor,
@@ -59,7 +59,7 @@ def create_invitation(vendor, email, role, created_by, request=None):
             created_by=created_by,
             expires_at=timezone.now() + timedelta(days=7)
         )
-        
+
         logger.info(f"Invitation created for {email} to {vendor.name}")
         return invitation
         
@@ -206,29 +206,34 @@ def reject_invitation(token):
         logger.warning(f"Invalid invitation token: {token}")
         return False, "Invalid invitation token"
 
+
 def resend_invitation(invitation_id):
     """
-    Resend invitation email.
-    
+    Resend invitation email — dispatches the email via an async Celery task.
+
     Args:
         invitation_id: VendorInvitation ID
-        
+
     Returns:
-        bool: Success status
+        bool: True if validation passed and task was dispatched
     """
+    from apps.vendors.tasks import send_vendor_invitation_email_task
+
     try:
         invitation = VendorInvitation.objects.get(id=invitation_id)
-        
+
         if invitation.status != "pending":
             raise ValueError(f"Cannot resend {invitation.status} invitation")
-        
+
         if invitation.is_expired():
             # Refresh expiration
             invitation.expires_at = timezone.now() + timedelta(days=7)
             invitation.save()
-        
-        return send_invitation_email(invitation)
-        
+
+        # Dispatch async — no longer blocks on SMTP
+        send_vendor_invitation_email_task.delay(invitation.id)
+        return True
+
     except Exception as e:
         logger.error(f"Failed to resend invitation: {str(e)}")
         return False

@@ -13,6 +13,8 @@ from drf_spectacular.utils import (
     OpenApiResponse,
 )
 
+from apps.common.mixins import TenantIsolationMixin
+
 from .models import Order, OrderStatusLog
 from .serializers import (
     OrderCreateSerializer,
@@ -50,21 +52,21 @@ from apps.audit_logs.services import create_audit_log
         ],
     )
 )
-class OrderListView(generics.ListAPIView):
+class OrderListView(TenantIsolationMixin, generics.ListAPIView):
+    tenant_vendor_field = "vendor"
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Order.objects.filter(
-            vendor__staff__user=self.request.user,
-        ).select_related(
+        queryset = Order.objects.select_related(
             "vendor",
             "branch",
         ).prefetch_related(
             "items",
             "status_logs",
             "payment",
-        ).distinct()
+        )
+        queryset = self.scope_queryset(queryset).distinct()
 
         vendor_id = self.request.query_params.get("vendor_id")
         if vendor_id:
@@ -88,20 +90,21 @@ class OrderListView(generics.ListAPIView):
         },
     )
 )
-class OrderDetailView(generics.RetrieveAPIView):
+class OrderDetailView(TenantIsolationMixin, generics.RetrieveAPIView):
+    tenant_vendor_field = "vendor"
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Order.objects.filter(
-            vendor__staff__user=self.request.user,
-        ).select_related(
-            "vendor",
-            "branch",
-        ).prefetch_related(
-            "items",
-            "status_logs",
-            "payment",
+        return self.scope_queryset(
+            Order.objects.select_related(
+                "vendor",
+                "branch",
+            ).prefetch_related(
+                "items",
+                "status_logs",
+                "payment",
+            )
         ).distinct()
 
 
@@ -174,12 +177,16 @@ class OrderCreateView(generics.CreateAPIView):
         },
     )
 )
-class OrderStatusUpdateView(generics.GenericAPIView):
+class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
+    tenant_vendor_field = "vendor"
     serializer_class = OrderStatusUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        order = get_object_or_404(Order, pk=pk)
+        order = get_object_or_404(
+            self.scope_queryset(Order.objects.select_related("vendor")),
+            pk=pk,
+        )
 
         validate_vendor_access(
             vendor=order.vendor,

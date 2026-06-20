@@ -6,25 +6,78 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
+
 from .models import Delivery, DeliveryLog
-from .serializers import DeliverySerializer
+from apps.common.mixins import TenantIsolationMixin
+
+from .serializers import (
+    DeliverySerializer,
+    AssignRiderSerializer,
+    UpdateDeliveryStatusSerializer,
+)
 from apps.vendors.models import VendorStaff
 from apps.notifications.services import create_notification
 
 from apps.audit_logs.services import create_audit_log
 
 
-class DeliveryViewSet(viewsets.ReadOnlyModelViewSet):
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Deliveries"],
+        summary="List deliveries",
+        description="List all deliveries accessible to the authenticated user.",
+        responses={
+            200: DeliverySerializer(many=True),
+        },
+    ),
+    retrieve=extend_schema(
+        tags=["Deliveries"],
+        summary="Retrieve delivery",
+        description="Retrieve a single delivery by ID.",
+        responses={
+            200: DeliverySerializer,
+            404: OpenApiResponse(description="Delivery not found"),
+        },
+    ),
+    assign_rider=extend_schema(
+        tags=["Deliveries"],
+        summary="Assign rider",
+        description="Assign a rider to a delivery (dispatcher only).",
+        request=AssignRiderSerializer,
+        responses={
+            200: OpenApiResponse(description="Rider assigned successfully"),
+            403: OpenApiResponse(description="Only dispatchers can assign riders"),
+            404: OpenApiResponse(description="Delivery or rider not found"),
+        },
+    ),
+    update_status=extend_schema(
+        tags=["Deliveries"],
+        summary="Update delivery status",
+        description="Update delivery status (rider only). Allowed transitions: pending→assigned→in_transit→delivered.",
+        request=UpdateDeliveryStatusSerializer,
+        responses={
+            200: OpenApiResponse(description="Status updated successfully"),
+            400: OpenApiResponse(description="Invalid status or transition not allowed"),
+            403: OpenApiResponse(description="Only riders can update delivery status"),
+            404: OpenApiResponse(description="Delivery not found"),
+        },
+    ),
+)
+class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
 
+    tenant_vendor_field = "order__vendor"
+    lookup_field = "id"
+    lookup_value_regex = "[0-9]+"
     serializer_class = DeliverySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Delivery.objects.select_related(
-            "order",
-            "assigned_rider",
-        ).filter(
-            order__vendor__staff__user=self.request.user,
+        return self.scope_queryset(
+            Delivery.objects.select_related(
+                "order",
+                "assigned_rider",
+            )
         ).distinct()
 
     def get_staff(self, user, delivery):

@@ -390,6 +390,7 @@ def process_payment_success(payment, user=None, ip_address=None, user_agent=None
         create_invoice_from_order,
         mark_invoice_as_paid,
     )
+    from apps.payments.tasks import generate_invoice_pdf_task
     from apps.audit_logs.services import create_audit_log
 
     order = payment.order
@@ -445,7 +446,12 @@ def process_payment_success(payment, user=None, ip_address=None, user_agent=None
             )
 
         # --------------------------
-        # 5. AUDIT LOG (SAFE)
+        # 5. INVOICE PDF (ASYNC)
+        # --------------------------
+        generate_invoice_pdf_task.delay(invoice.id)
+
+        # --------------------------
+        # 6. AUDIT LOG (SAFE)
         # --------------------------
         create_audit_log(
             user=user or order.created_by,

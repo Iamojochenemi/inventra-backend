@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 import json
 import logging
 
@@ -8,8 +8,11 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from django.http import JsonResponse, FileResponse
+from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
+
+from apps.common.mixins import TenantIsolationMixin
 
 from .serializers import PaymentInitializeSerializer
 from .models import Payment, Invoice
@@ -38,6 +41,11 @@ def _get_client_meta(request):
     tags=["Payments"],
     summary="Initialize payment",
     description="Initialize a Paystack payment transaction for an order.",
+    request=PaymentInitializeSerializer,
+    responses={
+        201: OpenApiResponse(description="Payment initialized with authorization URL"),
+        400: OpenApiResponse(description="Validation error or payment initialization failed"),
+    },
 )
 class PaymentInitializeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -96,112 +104,116 @@ class PaymentInitializeView(APIView):
 # -------------------------
 # PAYSTACK WEBHOOK
 # -------------------------
-@csrf_exempt
-def paystack_webhook(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Invalid method"}, status=405)
 
-    ip_address, user_agent = _get_client_meta(request)
 
-    try:
-        paystack_service = PaystackService()
-        signature_header = request.META.get("HTTP_X_PAYSTACK_SIGNATURE")
+@method_decorator(csrf_exempt, name="dispatch")
+@extend_schema(exclude=True)
+class PaystackWebhookView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
-        paystack_service.validate_webhook_signature(
-            request.body,
-            signature_header,
-        )
+    def post(self, request):
+        ip_address, user_agent = _get_client_meta(request)
 
-    except WebhookSignatureError as e:
-        logger.error(f"Webhook signature validation failed: {str(e)}")
-        return JsonResponse({"error": "Invalid signature"}, status=401)
-    except Exception as e:
-        logger.error(f"Webhook validation error: {str(e)}")
-        return JsonResponse({"error": "Validation failed"}, status=400)
+        try:
+            paystack_service = PaystackService()
+            signature_header = request.META.get("HTTP_X_PAYSTACK_SIGNATURE")
 
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+            paystack_service.validate_webhook_signature(
+                request.body,
+                signature_header,
+            )
 
-    event = payload.get("event")
-    data = payload.get("data", {})
-    event_id = data.get("id") or payload.get("id") or data.get("reference", "unknown")
+        except WebhookSignatureError as e:
+            logger.error(f"Webhook signature validation failed: {str(e)}")
+            return JsonResponse({"error": "Invalid signature"}, status=401)
+        except Exception as e:
+            logger.error(f"Webhook validation error: {str(e)}")
+            return JsonResponse({"error": "Validation failed"}, status=400)
 
-    if event != "charge.success":
-        logger.info(f"Ignoring webhook event: {event}")
-        record_payment_webhook(event, str(event_id), payload, status="processed")
-        return JsonResponse({"status": "ignored"})
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    reference = data.get("reference")
+        event = payload.get("event")
+        data = payload.get("data", {})
+        event_id = data.get("id") or payload.get("id") or data.get("reference", "unknown")
 
-    if not reference:
-        logger.warning("Webhook received without reference")
-        return JsonResponse({"error": "Missing reference"}, status=400)
+        if event != "charge.success":
+            logger.info(f"Ignoring webhook event: {event}")
+            record_payment_webhook(event, str(event_id), payload, status="processed")
+            return JsonResponse({"status": "ignored"})
 
-    try:
-        payment = Payment.objects.select_related("order").get(reference=reference)
-    except Payment.DoesNotExist:
-        logger.error(f"Payment not found for reference: {reference}")
-        record_payment_webhook(
-            event, str(event_id), payload, status="failed",
-            error_message="Payment not found",
-        )
-        return JsonResponse({"error": "Payment not found"}, status=404)
+        reference = data.get("reference")
 
-    if payment.status == "successful":
-        logger.info(f"Payment {reference} already processed")
-        record_payment_webhook(event, str(event_id), payload, payment=payment)
-        return JsonResponse({"status": "already processed"})
+        if not reference:
+            logger.warning("Webhook received without reference")
+            return JsonResponse({"error": "Missing reference"}, status=400)
 
-    try:
-        paystack_service = PaystackService()
-        paystack_service.handle_successful_payment(reference, payment)
+        try:
+            payment = Payment.objects.select_related("order").get(reference=reference)
+        except Payment.DoesNotExist:
+            logger.error(f"Payment not found for reference: {reference}")
+            record_payment_webhook(
+                event, str(event_id), payload, status="failed",
+                error_message="Payment not found",
+            )
+            return JsonResponse({"error": "Payment not found"}, status=404)
 
-        process_payment_success(
-            payment,
-            user=payment.order.created_by,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
+        if payment.status == "successful":
+            logger.info(f"Payment {reference} already processed")
+            record_payment_webhook(event, str(event_id), payload, payment=payment)
+            return JsonResponse({"status": "already processed"})
 
-        record_payment_webhook(event, str(event_id), payload, payment=payment)
+        try:
+            paystack_service = PaystackService()
+            paystack_service.handle_successful_payment(reference, payment)
 
-        logger.info(
-            f"Payment {reference} processed successfully for order {payment.order.id}"
-        )
+            process_payment_success(
+                payment,
+                user=payment.order.created_by,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
 
-        return JsonResponse({
-            "status": "success",
-            "payment": payment.reference,
-            "order_id": payment.order.id,
-        })
+            record_payment_webhook(event, str(event_id), payload, payment=payment)
 
-    except PaystackVerificationError as e:
-        logger.error(f"Payment verification failed for {reference}: {str(e)}")
-        paystack_service.handle_failed_payment(
-            reference,
-            payment,
-            reason=str(e),
-        )
-        record_payment_webhook(
-            event, str(event_id), payload, payment=payment,
-            status="failed", error_message=str(e),
-        )
-        return JsonResponse({
-            "error": "Payment verification failed",
-            "details": str(e),
-        }, status=400)
-    except Exception as e:
-        logger.error(f"Webhook processing error for {reference}: {str(e)}")
-        record_payment_webhook(
-            event, str(event_id), payload, payment=payment,
-            status="failed", error_message=str(e),
-        )
-        return JsonResponse({
-            "error": "Processing failed",
-            "details": str(e),
-        }, status=500)
+            logger.info(
+                f"Payment {reference} processed successfully for order {payment.order.id}"
+            )
+
+            return JsonResponse({
+                "status": "success",
+                "payment": payment.reference,
+                "order_id": payment.order.id,
+            })
+
+        except PaystackVerificationError as e:
+            logger.error(f"Payment verification failed for {reference}: {str(e)}")
+            paystack_service.handle_failed_payment(
+                reference,
+                payment,
+                reason=str(e),
+            )
+            record_payment_webhook(
+                event, str(event_id), payload, payment=payment,
+                status="failed", error_message=str(e),
+            )
+            return JsonResponse({
+                "error": "Payment verification failed",
+                "details": str(e),
+            }, status=400)
+        except Exception as e:
+            logger.error(f"Webhook processing error for {reference}: {str(e)}")
+            record_payment_webhook(
+                event, str(event_id), payload, payment=payment,
+                status="failed", error_message=str(e),
+            )
+            return JsonResponse({
+                "error": "Processing failed",
+                "details": str(e),
+            }, status=500)
 
 
 # -------------------------
@@ -211,6 +223,11 @@ def paystack_webhook(request):
     tags=["Payments"],
     summary="Verify payment",
     description="Verify a Paystack transaction and update the payment status.",
+    responses={
+        200: OpenApiResponse(description="Payment verification result"),
+        400: OpenApiResponse(description="Verification failed"),
+        404: OpenApiResponse(description="Payment not found"),
+    },
 )
 class PaymentVerifyView(APIView):
     permission_classes = [IsAuthenticated]
@@ -289,19 +306,22 @@ class PaymentVerifyView(APIView):
 @extend_schema(
     tags=["Invoices"],
     summary="Retrieve invoice",
-    description="Retrieve invoice details.",
+    description="Retrieve invoice details by ID.",
+    responses={
+        200: OpenApiResponse(description="Invoice details"),
+        404: OpenApiResponse(description="Invoice not found"),
+    },
 )
-class InvoiceDetailView(APIView):
+class InvoiceDetailView(TenantIsolationMixin, APIView):
+    tenant_vendor_field = "order__vendor"
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         invoice = get_object_or_404(
-            Invoice.objects.select_related("order", "order__vendor"),
+            self.scope_queryset(
+                Invoice.objects.select_related("order", "order__vendor"),
+            ),
             pk=pk,
-        )
-        validate_vendor_access(
-            vendor=invoice.order.vendor,
-            user=request.user,
         )
         return Response({
             "id": invoice.id,
@@ -319,19 +339,22 @@ class InvoiceDetailView(APIView):
 @extend_schema(
     tags=["Invoices"],
     summary="Download invoice PDF",
-    description="Download the invoice PDF file.",
+    description="Download the invoice PDF file as an attachment.",
+    responses={
+        200: OpenApiResponse(description="PDF file download"),
+        404: OpenApiResponse(description="Invoice not found"),
+    },
 )
-class InvoiceDownloadView(APIView):
+class InvoiceDownloadView(TenantIsolationMixin, APIView):
+    tenant_vendor_field = "order__vendor"
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         invoice = get_object_or_404(
-            Invoice.objects.select_related("order", "order__vendor"),
+            self.scope_queryset(
+                Invoice.objects.select_related("order", "order__vendor"),
+            ),
             pk=pk,
-        )
-        validate_vendor_access(
-            vendor=invoice.order.vendor,
-            user=request.user,
         )
 
         if not invoice.pdf_file:

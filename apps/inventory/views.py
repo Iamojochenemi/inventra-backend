@@ -1,9 +1,13 @@
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
 from rest_framework import generics, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db import transaction
 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiParameter
+
+from apps.common.mixins import TenantIsolationMixin
 
 from .models import (
     Category,
@@ -111,7 +115,8 @@ class ProductCreateView(generics.CreateAPIView):
         },
     )
 )
-class InventoryAdjustmentView(generics.GenericAPIView):
+class InventoryAdjustmentView(TenantIsolationMixin, generics.GenericAPIView):
+    tenant_vendor_field = "product__vendor"
     serializer_class = InventoryAdjustmentSerializer
     permission_classes = [IsAuthenticated]
 
@@ -124,7 +129,12 @@ class InventoryAdjustmentView(generics.GenericAPIView):
         adjustment_type = serializer.validated_data["adjustment_type"]
         reason = serializer.validated_data.get("reason", "")
 
-        inventory = Inventory.objects.get(id=inventory_id)
+        inventory = get_object_or_404(
+            self.scope_queryset(
+                Inventory.objects.select_related("product__vendor"),
+            ),
+            id=inventory_id,
+        )
 
         validate_vendor_access(
             vendor=inventory.product.vendor,
@@ -206,14 +216,13 @@ class InventoryAdjustmentView(generics.GenericAPIView):
         },
     )
 )
-class InventoryListView(generics.ListAPIView):
+class InventoryListView(TenantIsolationMixin, generics.ListAPIView):
+    tenant_vendor_field = "product__vendor"
     serializer_class = InventorySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Inventory.objects.filter(
-            product__vendor__staff__user=self.request.user
-        )
+        queryset = self.scope_queryset(Inventory.objects.all())
 
         branch_id = self.request.query_params.get("branch")
         if branch_id:

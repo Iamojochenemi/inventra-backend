@@ -1,23 +1,108 @@
-# Virtual Environment
-venv/
-
-# Python cache
+# ──────────────────────────
+#  PYTHON / DJANGO
+# ──────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.mo
+*.pot
+*.po~
+*.spec
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# Environment variables
+# Virtual environments
+venv/
+.env/
+.venv/
+env/
+
+# Coverage & profiling
+.coverage
+.coverage.*
+.coverage.rc
+.coveragerc
+htmlcov/
+coverage.xml
+*.prof
+*.lcov
+
+# Secrets & config
 .env
+.env.*
+!.env.template
+!.env.example
+*.pem
+*.key
+*.cert
+secrets/
 
 # Database
-db.sqlite3
+*.sqlite3
+*.sqlite
+*.db
+local.db
 
-# VS Code
+# Logs
+*.log
+logs/
+
+# ──────────────────────────
+#  IDE / EDITOR
+# ──────────────────────────
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+*.iml
+.netbeans/
+nbproject/
 
-# OS files
+# ──────────────────────────
+#  OS ARTIFACTS
+# ──────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# Static/media
-media/
+# ──────────────────────────
+#  STATIC / MEDIA (production)
+# ──────────────────────────
 staticfiles/
+media/
+!media/.gitkeep
+
+# ──────────────────────────
+#  DOCKER
+# ──────────────────────────
+docker-compose.override.yml
+.docker/
+*.pid
+
+# ──────────────────────────
+#  MISC
+# ──────────────────────────
+*.bak
+*.orig
+*.tmp
+node_modules/
+celery_audit.txt
+workmap
