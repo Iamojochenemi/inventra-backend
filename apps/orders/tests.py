@@ -167,7 +167,6 @@ class OrderTestCaseBase(APITestCase):
 
 
 class OrderCreateTests(OrderTestCaseBase):
-
     @patch("apps.payments.services.create_payment_for_order")
     def test_owner_can_create_order(self, mock_payment):
         """Owner of a vendor can successfully create an order."""
@@ -273,7 +272,6 @@ class OrderCreateTests(OrderTestCaseBase):
 
 
 class OrderListDetailTests(OrderTestCaseBase):
-
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
@@ -333,7 +331,6 @@ class OrderListDetailTests(OrderTestCaseBase):
 
 
 class OrderStatusTransitionTests(OrderTestCaseBase):
-
     def setUp(self):
         super().setUp()
         # Fresh order for each test so state is predictable
@@ -484,7 +481,6 @@ class OrderStatusTransitionTests(OrderTestCaseBase):
 
 
 class MultiTenantIsolationTests(OrderTestCaseBase):
-
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()

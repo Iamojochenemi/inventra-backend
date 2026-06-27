@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audit_logs', '0001_initial'),
+        ("audit_logs", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='auditlog',
-            name='user_agent',
-            field=models.TextField(blank=True, help_text='User agent string from request', null=True),
+            model_name="auditlog",
+            name="user_agent",
+            field=models.TextField(
+                blank=True, help_text="User agent string from request", null=True
+            ),
         ),
     ]

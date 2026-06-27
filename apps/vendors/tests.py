@@ -110,7 +110,6 @@ class VendorTestCaseBase(APITestCase):
 
 
 class VendorCRUDTests(VendorTestCaseBase):
-
     def test_create_vendor_success(self):
         """Authenticated user can create a vendor and becomes owner."""
         client = self._client(self.owner_a)
@@ -180,7 +179,6 @@ class VendorCRUDTests(VendorTestCaseBase):
 
 
 class StaffManagementTests(VendorTestCaseBase):
-
     def test_owner_can_create_staff(self):
         """Owner role can add staff to their vendor."""
         new_user = User.objects.create_user(
@@ -297,7 +295,6 @@ class StaffManagementTests(VendorTestCaseBase):
 
 
 class BranchManagementTests(VendorTestCaseBase):
-
     def test_owner_can_create_branch(self):
         """Owner can create a branch for their vendor."""
         client = self._client(self.owner_a)
@@ -389,7 +386,6 @@ class BranchManagementTests(VendorTestCaseBase):
 
 
 class VendorSettingsTests(VendorTestCaseBase):
-
     def test_get_settings(self):
         """Owner can retrieve vendor settings."""
         # Ensure settings exist
@@ -431,7 +427,6 @@ class VendorSettingsTests(VendorTestCaseBase):
 
 
 class InvitationTests(VendorTestCaseBase):
-
     @patch("apps.vendors.views.send_invitation_email")
     def test_create_invitation(self, mock_send):
         """Owner can create an invitation for a new staff member."""

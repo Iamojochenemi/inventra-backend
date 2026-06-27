@@ -4,7 +4,6 @@ from .models import Delivery, DeliveryLog
 
 
 class DeliverySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Delivery
         fields = [
@@ -25,7 +24,6 @@ class DeliverySerializer(serializers.ModelSerializer):
 
 
 class DeliveryLogSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = DeliveryLog
         fields = [

@@ -135,7 +135,6 @@ class InventoryTestCaseBase(APITestCase):
 
 
 class CategoryTests(InventoryTestCaseBase):
-
     def test_owner_can_create_category(self):
         """Owner can create a category for their vendor."""
         client = self._client(self.owner_a)
@@ -214,7 +213,6 @@ class CategoryTests(InventoryTestCaseBase):
 
 
 class ProductTests(InventoryTestCaseBase):
-
     def test_create_product_with_category(self):
         """Owner can create a product with a category."""
         client = self._client(self.owner_a)
@@ -327,7 +325,6 @@ class ProductTests(InventoryTestCaseBase):
 
 
 class InventoryAdjustmentTests(InventoryTestCaseBase):
-
     def test_stock_in_increases_quantity(self):
         """Stock In adjustment increases inventory quantity."""
         client = self._client(self.owner_a)
@@ -477,7 +474,6 @@ class InventoryAdjustmentTests(InventoryTestCaseBase):
 
 
 class LowStockTests(InventoryTestCaseBase):
-
     @patch("apps.notifications.tasks.send_notification_task.delay")
     def test_low_stock_trigger_on_stock_out(self, mock_notify):
         """Stocking out below threshold triggers low stock alert."""
@@ -533,7 +529,6 @@ class LowStockTests(InventoryTestCaseBase):
 
 
 class InventoryListTests(InventoryTestCaseBase):
-
     def test_list_inventory_own_vendor(self):
         """User sees only inventory records for their vendor."""
         client = self._client(self.owner_a)

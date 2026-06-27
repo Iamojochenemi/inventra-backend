@@ -5,20 +5,28 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('vendors', '0003_vendorstaff'),
+        ("vendors", "0003_vendorstaff"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='vendorstaff',
-            name='role',
-            field=models.CharField(choices=[('owner', 'Owner'), ('manager', 'Manager'), ('inventory', 'Inventory Staff'), ('dispatcher', 'Dispatcher'), ('rider', 'Rider')], max_length=20),
+            model_name="vendorstaff",
+            name="role",
+            field=models.CharField(
+                choices=[
+                    ("owner", "Owner"),
+                    ("manager", "Manager"),
+                    ("inventory", "Inventory Staff"),
+                    ("dispatcher", "Dispatcher"),
+                    ("rider", "Rider"),
+                ],
+                max_length=20,
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='vendorstaff',
-            unique_together={('vendor', 'user')},
+            name="vendorstaff",
+            unique_together={("vendor", "user")},
         ),
     ]

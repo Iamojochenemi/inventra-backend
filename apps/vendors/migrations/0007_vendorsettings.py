@@ -5,30 +5,47 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('vendors', '0006_vendorstaff_branch'),
+        ("vendors", "0006_vendorstaff_branch"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='VendorSettings',
+            name="VendorSettings",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('business_registration_number', models.CharField(blank=True, max_length=255)),
-                ('tax_id', models.CharField(blank=True, max_length=255)),
-                ('currency', models.CharField(default='NGN', max_length=10)),
-                ('enable_email_notifications', models.BooleanField(default=True)),
-                ('enable_inventory_alerts', models.BooleanField(default=True)),
-                ('enable_order_notifications', models.BooleanField(default=True)),
-                ('enable_delivery_updates', models.BooleanField(default=True)),
-                ('auto_process_payments', models.BooleanField(default=False)),
-                ('payment_settlement_days', models.PositiveIntegerField(default=7)),
-                ('allow_orders_when_low_stock', models.BooleanField(default=False)),
-                ('auto_assign_deliveries', models.BooleanField(default=False)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('vendor', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='settings', to='vendors.vendor')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "business_registration_number",
+                    models.CharField(blank=True, max_length=255),
+                ),
+                ("tax_id", models.CharField(blank=True, max_length=255)),
+                ("currency", models.CharField(default="NGN", max_length=10)),
+                ("enable_email_notifications", models.BooleanField(default=True)),
+                ("enable_inventory_alerts", models.BooleanField(default=True)),
+                ("enable_order_notifications", models.BooleanField(default=True)),
+                ("enable_delivery_updates", models.BooleanField(default=True)),
+                ("auto_process_payments", models.BooleanField(default=False)),
+                ("payment_settlement_days", models.PositiveIntegerField(default=7)),
+                ("allow_orders_when_low_stock", models.BooleanField(default=False)),
+                ("auto_assign_deliveries", models.BooleanField(default=False)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "vendor",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="settings",
+                        to="vendors.vendor",
+                    ),
+                ),
             ],
         ),
     ]

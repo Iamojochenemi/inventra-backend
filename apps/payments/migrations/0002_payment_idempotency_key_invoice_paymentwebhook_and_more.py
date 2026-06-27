@@ -5,67 +5,176 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('orders', '0002_orderstatuslog'),
-        ('payments', '0001_initial'),
+        ("orders", "0002_orderstatuslog"),
+        ("payments", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='payment',
-            name='idempotency_key',
-            field=models.CharField(blank=True, help_text='Unique key to prevent duplicate payments', max_length=255, null=True, unique=True),
+            model_name="payment",
+            name="idempotency_key",
+            field=models.CharField(
+                blank=True,
+                help_text="Unique key to prevent duplicate payments",
+                max_length=255,
+                null=True,
+                unique=True,
+            ),
         ),
         migrations.CreateModel(
-            name='Invoice',
+            name="Invoice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('invoice_number', models.CharField(max_length=50, unique=True)),
-                ('status', models.CharField(choices=[('draft', 'Draft'), ('issued', 'Issued'), ('paid', 'Paid'), ('overdue', 'Overdue'), ('cancelled', 'Cancelled')], default='draft', max_length=20)),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('currency', models.CharField(default='NGN', max_length=10)),
-                ('issued_at', models.DateTimeField(blank=True, null=True)),
-                ('due_date', models.DateTimeField(blank=True, null=True)),
-                ('paid_at', models.DateTimeField(blank=True, null=True)),
-                ('notes', models.TextField(blank=True)),
-                ('pdf_file', models.FileField(blank=True, help_text='Generated PDF invoice', null=True, upload_to='invoices/')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('order', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='invoice', to='orders.order')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("invoice_number", models.CharField(max_length=50, unique=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("draft", "Draft"),
+                            ("issued", "Issued"),
+                            ("paid", "Paid"),
+                            ("overdue", "Overdue"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="draft",
+                        max_length=20,
+                    ),
+                ),
+                ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
+                ("currency", models.CharField(default="NGN", max_length=10)),
+                ("issued_at", models.DateTimeField(blank=True, null=True)),
+                ("due_date", models.DateTimeField(blank=True, null=True)),
+                ("paid_at", models.DateTimeField(blank=True, null=True)),
+                ("notes", models.TextField(blank=True)),
+                (
+                    "pdf_file",
+                    models.FileField(
+                        blank=True,
+                        help_text="Generated PDF invoice",
+                        null=True,
+                        upload_to="invoices/",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "order",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="invoice",
+                        to="orders.order",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='PaymentWebhook',
+            name="PaymentWebhook",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('event_type', models.CharField(max_length=100)),
-                ('event_id', models.CharField(max_length=255, unique=True)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('processed', 'Processed'), ('failed', 'Failed')], default='pending', max_length=20)),
-                ('payload', models.JSONField()),
-                ('error_message', models.TextField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('processed_at', models.DateTimeField(blank=True, null=True)),
-                ('payment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='webhooks', to='payments.payment')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("event_type", models.CharField(max_length=100)),
+                ("event_id", models.CharField(max_length=255, unique=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("processed", "Processed"),
+                            ("failed", "Failed"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("payload", models.JSONField()),
+                ("error_message", models.TextField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("processed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "payment",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="webhooks",
+                        to="payments.payment",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='TransactionRecord',
+            name="TransactionRecord",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('transaction_type', models.CharField(choices=[('payment', 'Payment'), ('refund', 'Refund'), ('settlement', 'Settlement'), ('adjustment', 'Adjustment')], max_length=20)),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('description', models.TextField(blank=True)),
-                ('reference_id', models.CharField(help_text='External gateway reference ID', max_length=255, unique=True)),
-                ('raw_data', models.JSONField(blank=True, help_text='Raw response from payment gateway', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('payment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='transaction_records', to='payments.payment')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "transaction_type",
+                    models.CharField(
+                        choices=[
+                            ("payment", "Payment"),
+                            ("refund", "Refund"),
+                            ("settlement", "Settlement"),
+                            ("adjustment", "Adjustment"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "reference_id",
+                    models.CharField(
+                        help_text="External gateway reference ID",
+                        max_length=255,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "raw_data",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Raw response from payment gateway",
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "payment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="transaction_records",
+                        to="payments.payment",
+                    ),
+                ),
             ],
         ),
     ]

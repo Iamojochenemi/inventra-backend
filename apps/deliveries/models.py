@@ -5,7 +5,6 @@ from apps.notifications.tasks import send_notification_task
 
 
 class Delivery(models.Model):
-
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("assigned", "Assigned"),
@@ -79,7 +78,6 @@ class Delivery(models.Model):
 
 
 class DeliveryLog(models.Model):
-
     EVENT_TYPES = (
         ("status_change", "Status Change"),
         ("rider_assignment", "Rider Assignment"),

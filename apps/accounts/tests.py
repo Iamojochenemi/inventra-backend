@@ -48,7 +48,6 @@ class AuthTestCaseBase(APITestCase):
 
 
 class RegistrationTests(AuthTestCaseBase):
-
     @patch("apps.accounts.services.auth_service.send_verification_email")
     def test_register_success(self, mock_send):
         """Register a new user returns 201 with user data."""
@@ -107,7 +106,6 @@ class RegistrationTests(AuthTestCaseBase):
 
 
 class EmailVerificationTests(AuthTestCaseBase):
-
     def setUp(self):
         super().setUp()
         # Prepare an unverified user with a verification token
@@ -183,7 +181,6 @@ class EmailVerificationTests(AuthTestCaseBase):
 
 
 class ResendVerificationTests(AuthTestCaseBase):
-
     def setUp(self):
         super().setUp()
         self.unverified_user = User.objects.create_user(
@@ -254,7 +251,6 @@ class ResendVerificationTests(AuthTestCaseBase):
 
 
 class PasswordResetTests(AuthTestCaseBase):
-
     @patch("apps.accounts.views.send_password_reset_email")
     def test_password_reset_request_success(self, mock_send):
         """Requesting password reset for existing email sends email."""
@@ -364,7 +360,6 @@ class PasswordResetTests(AuthTestCaseBase):
 
 
 class MeEndpointTests(AuthTestCaseBase):
-
     def test_me_authenticated(self):
         """Authenticated user can retrieve their profile."""
         client = self._client(self.user)
@@ -392,7 +387,6 @@ class MeEndpointTests(AuthTestCaseBase):
 
 
 class JWTAuthTests(AuthTestCaseBase):
-
     def test_obtain_token_success(self):
         """Valid credentials return access and refresh tokens."""
         client = APIClient()
@@ -449,7 +443,6 @@ class JWTAuthTests(AuthTestCaseBase):
 
 
 class ProtectedEndpointTests(AuthTestCaseBase):
-
     def test_protected_vendor_access(self):
         """Vendor role user can access protected endpoint."""
         client = self._client(self.user)

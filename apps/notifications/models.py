@@ -2,7 +2,6 @@ from django.db import models
 
 
 class Notification(models.Model):
-
     TYPE_CHOICES = (
         ("order", "Order"),
         ("delivery", "Delivery"),

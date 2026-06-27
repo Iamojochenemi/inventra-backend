@@ -166,7 +166,6 @@ class InventoryLog(models.Model):
         )
 
         if inventory.is_low_stock():
-
             send_notification_task.delay(
                 vendor_id=inventory.product.vendor.id,
                 notification_type="inventory",

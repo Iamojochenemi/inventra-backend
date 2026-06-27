@@ -64,7 +64,6 @@ from .serializers import (
     ),
 )
 class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
-
     tenant_vendor_field = "order__vendor"
     lookup_field = "id"
     lookup_value_regex = "[0-9]+"

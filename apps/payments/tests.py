@@ -293,7 +293,6 @@ class DuplicateWebhookTests(PaystackWebhookTestCase):
 
 
 class WebhookValidationTests(PaystackWebhookTestCase):
-
     def test_invalid_signature_returns_401(self):
         """Webhook with an invalid HMAC signature returns 401."""
         from apps.payments.services import WebhookSignatureError
@@ -372,7 +371,6 @@ class WebhookValidationTests(PaystackWebhookTestCase):
 
 @patch("apps.payments.views.PaystackService.__init__", return_value=None)
 class WebhookRecoveryTests(PaystackWebhookTestCase):
-
     @patch.object(PaystackService, "validate_webhook_signature", return_value=True)
     @patch.object(PaystackService, "handle_successful_payment")
     def test_verification_failure_marks_payment_failed(

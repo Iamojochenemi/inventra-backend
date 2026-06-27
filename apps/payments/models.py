@@ -3,7 +3,6 @@ from django.utils.crypto import get_random_string
 
 
 class Payment(models.Model):
-
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("successful", "Successful"),

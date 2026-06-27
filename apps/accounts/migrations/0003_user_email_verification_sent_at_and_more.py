@@ -4,35 +4,34 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0002_user_phone_number_user_role'),
+        ("accounts", "0002_user_phone_number_user_role"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='user',
-            name='email_verification_sent_at',
+            model_name="user",
+            name="email_verification_sent_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='user',
-            name='email_verification_token',
+            model_name="user",
+            name="email_verification_token",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='user',
-            name='email_verified',
+            model_name="user",
+            name="email_verified",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='user',
-            name='password_reset_token',
+            model_name="user",
+            name="password_reset_token",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='user',
-            name='password_reset_token_expires_at',
+            model_name="user",
+            name="password_reset_token_expires_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

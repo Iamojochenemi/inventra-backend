@@ -6,23 +6,55 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('inventory', '0003_inventory'),
+        ("inventory", "0003_inventory"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='InventoryLog',
+            name="InventoryLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('change_quantity', models.IntegerField()),
-                ('adjustment_type', models.CharField(choices=[('stock_in', 'Stock In'), ('stock_out', 'Stock Out'), ('adjustment', 'Adjustment')], max_length=20)),
-                ('reason', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='inventory_logs', to=settings.AUTH_USER_MODEL)),
-                ('inventory', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='logs', to='inventory.inventory')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("change_quantity", models.IntegerField()),
+                (
+                    "adjustment_type",
+                    models.CharField(
+                        choices=[
+                            ("stock_in", "Stock In"),
+                            ("stock_out", "Stock Out"),
+                            ("adjustment", "Adjustment"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("reason", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="inventory_logs",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "inventory",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="logs",
+                        to="inventory.inventory",
+                    ),
+                ),
             ],
         ),
     ]

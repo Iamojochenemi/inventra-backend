@@ -130,7 +130,6 @@ class DeliveryTestCaseBase(APITestCase):
 
 
 class DeliveryListTests(DeliveryTestCaseBase):
-
     def test_list_deliveries_own_vendor(self):
         """User sees only deliveries for their vendor."""
         client = self._client(self.owner_user)
@@ -172,7 +171,6 @@ class DeliveryListTests(DeliveryTestCaseBase):
 
 
 class AssignRiderTests(DeliveryTestCaseBase):
-
     @patch("apps.deliveries.views.create_notification")
     @patch("apps.deliveries.views.create_audit_log")
     def test_dispatcher_can_assign_rider(self, mock_audit, mock_notify):
@@ -255,7 +253,6 @@ class AssignRiderTests(DeliveryTestCaseBase):
 
 
 class UpdateDeliveryStatusTests(DeliveryTestCaseBase):
-
     def setUp(self):
         super().setUp()
         # Pre-assign rider so delivery is in "assigned" state
@@ -385,7 +382,6 @@ class UpdateDeliveryStatusTests(DeliveryTestCaseBase):
 
 
 class DeliveryCreationTests(DeliveryTestCaseBase):
-
     def test_create_delivery_from_confirmed_order(self):
         """create_delivery_from_order returns a pending delivery."""
         delivery = create_delivery_from_order(self.order_a)

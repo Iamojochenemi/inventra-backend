@@ -18,7 +18,6 @@ def create_delivery_from_order(order):
         return None
 
     with transaction.atomic():
-
         delivery, created = Delivery.objects.get_or_create(
             order=order, defaults={"status": "pending"}
         )

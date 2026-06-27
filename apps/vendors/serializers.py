@@ -32,7 +32,6 @@ class VendorSerializer(serializers.ModelSerializer):
 
 
 class VendorStaffSerializer(serializers.ModelSerializer):
-
     role = serializers.ChoiceField(
         choices=[
             ("manager", "Manager"),

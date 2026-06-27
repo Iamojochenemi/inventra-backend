@@ -390,7 +390,6 @@ def process_payment_success(payment, user=None, ip_address=None, user_agent=None
     order = payment.order
 
     with transaction.atomic():
-
         # --------------------------
         # 1. ORDER STATUS (SAFE CHECK)
         # --------------------------

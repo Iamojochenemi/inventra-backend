@@ -200,8 +200,7 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
             return Response(
                 {
                     "error": (
-                        f"Cannot change status from "
-                        f"'{old_status}' to '{new_status}'"
+                        f"Cannot change status from '{old_status}' to '{new_status}'"
                     ),
                     "allowed_statuses": allowed,
                 },
@@ -209,10 +208,8 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
             )
 
         with transaction.atomic():
-
             if new_status == "cancelled" and old_status in ["pending", "confirmed"]:
                 for item in order.items.select_related("product").all():
-
                     inventory = (
                         Inventory.objects.select_for_update()
                         .filter(
@@ -262,9 +259,7 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
                 notification_type="order",
                 title="Order Status Updated",
                 message=(
-                    f"Order #{order.id} "
-                    f"changed from '{old_status}' "
-                    f"to '{new_status}'."
+                    f"Order #{order.id} changed from '{old_status}' to '{new_status}'."
                 ),
             )
 

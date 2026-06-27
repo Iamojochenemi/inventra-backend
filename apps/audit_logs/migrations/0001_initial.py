@@ -6,48 +6,153 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
+        ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='AuditLog',
+            name="AuditLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('object_id', models.PositiveIntegerField()),
-                ('action', models.CharField(choices=[('create', 'Created'), ('update', 'Updated'), ('delete', 'Deleted'), ('restore', 'Restored')], max_length=20)),
-                ('old_values', models.JSONField(blank=True, help_text='Previous values of changed fields', null=True)),
-                ('new_values', models.JSONField(blank=True, help_text='New values of changed fields', null=True)),
-                ('ip_address', models.GenericIPAddressField(blank=True, help_text='IP address where change originated', null=True)),
-                ('user_agent', models.TextField(blank=True, help_text='User agent string from request')),
-                ('reason', models.TextField(blank=True, help_text='Reason for the change (if provided)')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='audit_logs', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("object_id", models.PositiveIntegerField()),
+                (
+                    "action",
+                    models.CharField(
+                        choices=[
+                            ("create", "Created"),
+                            ("update", "Updated"),
+                            ("delete", "Deleted"),
+                            ("restore", "Restored"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "old_values",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Previous values of changed fields",
+                        null=True,
+                    ),
+                ),
+                (
+                    "new_values",
+                    models.JSONField(
+                        blank=True, help_text="New values of changed fields", null=True
+                    ),
+                ),
+                (
+                    "ip_address",
+                    models.GenericIPAddressField(
+                        blank=True,
+                        help_text="IP address where change originated",
+                        null=True,
+                    ),
+                ),
+                (
+                    "user_agent",
+                    models.TextField(
+                        blank=True, help_text="User agent string from request"
+                    ),
+                ),
+                (
+                    "reason",
+                    models.TextField(
+                        blank=True, help_text="Reason for the change (if provided)"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "content_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="audit_logs",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['content_type', 'object_id'], name='audit_logs__content_9ccfc6_idx'), models.Index(fields=['user', 'created_at'], name='audit_logs__user_id_d31e2a_idx'), models.Index(fields=['action', 'created_at'], name='audit_logs__action_70fdcf_idx')],
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["content_type", "object_id"],
+                        name="audit_logs__content_9ccfc6_idx",
+                    ),
+                    models.Index(
+                        fields=["user", "created_at"],
+                        name="audit_logs__user_id_d31e2a_idx",
+                    ),
+                    models.Index(
+                        fields=["action", "created_at"],
+                        name="audit_logs__action_70fdcf_idx",
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='EntitySnapshot',
+            name="EntitySnapshot",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('object_id', models.PositiveIntegerField()),
-                ('snapshot_data', models.JSONField(help_text='Complete state of entity at snapshot time')),
-                ('reason', models.CharField(blank=True, help_text="Why snapshot was taken (e.g., 'Status change', 'Order completion')", max_length=255)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("object_id", models.PositiveIntegerField()),
+                (
+                    "snapshot_data",
+                    models.JSONField(
+                        help_text="Complete state of entity at snapshot time"
+                    ),
+                ),
+                (
+                    "reason",
+                    models.CharField(
+                        blank=True,
+                        help_text="Why snapshot was taken (e.g., 'Status change', 'Order completion')",
+                        max_length=255,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "content_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['content_type', 'object_id', 'created_at'], name='audit_logs__content_064ee8_idx')],
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["content_type", "object_id", "created_at"],
+                        name="audit_logs__content_064ee8_idx",
+                    )
+                ],
             },
         ),
     ]

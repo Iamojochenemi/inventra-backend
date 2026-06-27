@@ -147,7 +147,6 @@ class InventoryAdjustmentView(TenantIsolationMixin, generics.GenericAPIView):
         old_quantity = inventory.quantity
 
         with transaction.atomic():
-
             log = InventoryLog.objects.create(
                 inventory=inventory,
                 change_quantity=change_quantity,
