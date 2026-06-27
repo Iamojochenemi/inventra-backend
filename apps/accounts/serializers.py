@@ -1,5 +1,5 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
 
 User = get_user_model()
 
@@ -19,6 +19,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
         from apps.accounts.services.auth_service import send_verification_email
+
         send_verification_email(user, request)
 
         return user

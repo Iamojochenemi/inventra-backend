@@ -1,29 +1,31 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import generics, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiParameter
-
 from apps.common.mixins import TenantIsolationMixin
+from apps.vendors.services import validate_vendor_access
 
 from .models import (
     Category,
-    Product,
     Inventory,
     InventoryLog,
+    Product,
 )
 from .serializers import (
     CategorySerializer,
-    ProductSerializer,
     InventoryAdjustmentSerializer,
     InventorySerializer,
+    ProductSerializer,
 )
 from .services import initialize_product_inventory
-
-from apps.vendors.services import validate_vendor_access
 
 
 # ------------------------
@@ -50,9 +52,7 @@ class CategoryCreateView(generics.CreateAPIView):
         vendor = serializer.validated_data["vendor"]
 
         validate_vendor_access(
-            vendor=vendor,
-            user=self.request.user,
-            allowed_roles=["owner", "manager"]
+            vendor=vendor, user=self.request.user, allowed_roles=["owner", "manager"]
         )
 
         serializer.save(vendor=vendor)
@@ -82,9 +82,7 @@ class ProductCreateView(generics.CreateAPIView):
         vendor = serializer.validated_data["vendor"]
 
         validate_vendor_access(
-            vendor=vendor,
-            user=self.request.user,
-            allowed_roles=["owner", "manager"]
+            vendor=vendor, user=self.request.user, allowed_roles=["owner", "manager"]
         )
 
         category = serializer.validated_data.get("category")
@@ -143,7 +141,7 @@ class InventoryAdjustmentView(TenantIsolationMixin, generics.GenericAPIView):
                 "owner",
                 "manager",
                 "inventory",
-            ]
+            ],
         )
 
         old_quantity = inventory.quantity
@@ -155,7 +153,7 @@ class InventoryAdjustmentView(TenantIsolationMixin, generics.GenericAPIView):
                 change_quantity=change_quantity,
                 adjustment_type=adjustment_type,
                 reason=reason,
-                created_by=request.user
+                created_by=request.user,
             )
 
             result = log.apply_inventory_change()
@@ -173,7 +171,7 @@ class InventoryAdjustmentView(TenantIsolationMixin, generics.GenericAPIView):
                     "adjustment_type": adjustment_type,
                     "reason": reason,
                 },
-                reason="Inventory adjustment"
+                reason="Inventory adjustment",
             )
 
         return Response(
@@ -183,7 +181,7 @@ class InventoryAdjustmentView(TenantIsolationMixin, generics.GenericAPIView):
                 "new_quantity": inventory.quantity,
                 "is_low_stock": result["is_low_stock"],
             },
-            status=200
+            status=200,
         )
 
 

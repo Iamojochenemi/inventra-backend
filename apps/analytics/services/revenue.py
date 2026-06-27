@@ -1,4 +1,4 @@
-from django.db.models import Sum, Count, Q
+from django.db.models import Count, Q, Sum
 
 from apps.orders.models import Order
 
@@ -28,8 +28,6 @@ def get_revenue_intelligence(vendor):
         "confirmed_orders": agg["confirmed_orders"],
         "cancelled_orders": agg["cancelled_orders"],
         "average_order_value": (
-            round(float(total_revenue / total_orders), 2)
-            if total_orders
-            else 0
+            round(float(total_revenue / total_orders), 2) if total_orders else 0
         ),
     }

@@ -1,11 +1,13 @@
-from .models import Payment
-import uuid
-import logging
-import requests
-import hmac
 import hashlib
+import hmac
+import logging
+import uuid
 from decimal import Decimal
+
+import requests
 from django.conf import settings
+
+from .models import Payment
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,9 @@ def create_payment_for_order(order):
         # Always sync amount (order may change)
         if payment.amount != order.total_amount:
             payment.amount = order.total_amount
-            payment = create_payment_for_order(payment.order).save(update_fields=["amount"])
+            payment = create_payment_for_order(payment.order).save(
+                update_fields=["amount"]
+            )
 
         return payment
 
@@ -50,16 +54,19 @@ def create_payment_for_order(order):
 # -------------------------
 class PaystackException(Exception):
     """Base exception for Paystack service errors"""
+
     pass
 
 
 class PaystackVerificationError(PaystackException):
     """Exception raised when transaction verification fails"""
+
     pass
 
 
 class WebhookSignatureError(PaystackException):
     """Exception raised when webhook signature validation fails"""
+
     pass
 
 
@@ -80,9 +87,7 @@ class PaystackService:
         Raises:
             PaystackException: If API key is not provided and not in settings.
         """
-        self.api_key = api_key or getattr(
-            settings, "PAYSTACK_SECRET_KEY", None
-        )
+        self.api_key = api_key or getattr(settings, "PAYSTACK_SECRET_KEY", None)
 
         if not self.api_key:
             raise PaystackException(
@@ -138,9 +143,7 @@ class PaystackService:
             logger.error(
                 f"Paystack API HTTP error: {endpoint} - {e.response.status_code}"
             )
-            raise PaystackException(
-                f"Paystack API error: {e.response.status_code}"
-            )
+            raise PaystackException(f"Paystack API error: {e.response.status_code}")
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Paystack API request error: {endpoint} - {str(e)}")
@@ -188,9 +191,7 @@ class PaystackService:
             payload["metadata"] = {"order_id": order_id}
 
         try:
-            logger.info(
-                f"Initializing Paystack transaction: {reference}"
-            )
+            logger.info(f"Initializing Paystack transaction: {reference}")
             response = self._make_request(
                 "POST",
                 "/transaction/initialize",
@@ -308,9 +309,7 @@ class PaystackService:
         computed_signature = hash_object.hexdigest()
 
         if not hmac.compare_digest(computed_signature, signature_header):
-            logger.warning(
-                "Webhook signature validation failed - possible tampering"
-            )
+            logger.warning("Webhook signature validation failed - possible tampering")
             raise WebhookSignatureError("Invalid webhook signature")
 
         logger.info("Webhook signature validated successfully")
@@ -339,9 +338,7 @@ class PaystackService:
 
         # Update payment record
         payment_instance.status = "successful"
-        payment_instance.gateway_transaction_id = verification[
-            "gateway_transaction_id"
-        ]
+        payment_instance.gateway_transaction_id = verification["gateway_transaction_id"]
         payment_instance.raw_response = verification["raw_response"]
         payment_instance.save()
 
@@ -365,9 +362,7 @@ class PaystackService:
             Payment: Updated payment instance
         """
         payment_instance.status = "failed"
-        payment_instance.failure_reason = (
-            reason or "Payment failed at gateway"
-        )
+        payment_instance.failure_reason = reason or "Payment failed at gateway"
         payment_instance.save()
 
         logger.warning(f"Payment {reference} marked as failed: {reason}")
@@ -381,17 +376,16 @@ def process_payment_success(payment, user=None, ip_address=None, user_agent=None
     """
 
     from django.db import transaction
-    from django.utils import timezone
 
-    from apps.orders.models import OrderStatusLog
+    from apps.audit_logs.services import create_audit_log
     from apps.deliveries.services import create_delivery_from_order
+    from apps.orders.models import OrderStatusLog
     from apps.payments.models import TransactionRecord
     from apps.payments.services.invoice_service import (
         create_invoice_from_order,
         mark_invoice_as_paid,
     )
     from apps.payments.tasks import generate_invoice_pdf_task
-    from apps.audit_logs.services import create_audit_log
 
     order = payment.order
 
@@ -467,7 +461,9 @@ def process_payment_success(payment, user=None, ip_address=None, user_agent=None
     return payment
 
 
-def record_payment_webhook(event_type, event_id, payload, payment=None, status="processed", error_message=None):
+def record_payment_webhook(
+    event_type, event_id, payload, payment=None, status="processed", error_message=None
+):
     from django.utils import timezone
 
     from apps.payments.models import PaymentWebhook

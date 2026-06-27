@@ -1,11 +1,10 @@
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.vendors.services.vendor_service import get_user_vendors
 from apps.analytics.dashboard import get_vendor_dashboard
+from apps.vendors.services.vendor_service import get_user_vendors
 
 
 @extend_schema(

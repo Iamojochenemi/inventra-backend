@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from .models import Category, Inventory, InventoryLog, Product
 
 
@@ -25,16 +26,12 @@ class CategorySerializer(serializers.ModelSerializer):
         vendor = attrs["vendor"]
         name = attrs["name"]
 
-        if Category.objects.filter(
-            vendor=vendor,
-            name=name
-        ).exists():
+        if Category.objects.filter(vendor=vendor, name=name).exists():
             raise serializers.ValidationError(
                 "Category with this name already exists for this vendor."
             )
 
         return attrs
-    
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -71,57 +68,39 @@ class ProductSerializer(serializers.ModelSerializer):
             )
 
         return attrs
-    
+
+
 class InventoryAdjustmentSerializer(serializers.Serializer):
     inventory_id = serializers.IntegerField()
 
-    change_quantity = serializers.IntegerField(
-        min_value=1
-    )
+    change_quantity = serializers.IntegerField(min_value=1)
 
-    adjustment_type = serializers.ChoiceField(
-        choices=InventoryLog.ADJUSTMENT_TYPES
-    )
+    adjustment_type = serializers.ChoiceField(choices=InventoryLog.ADJUSTMENT_TYPES)
 
-    reason = serializers.CharField(
-        required=False,
-        allow_blank=True
-    )
+    reason = serializers.CharField(required=False, allow_blank=True)
 
     def validate_inventory_id(self, value):
         if not Inventory.objects.filter(id=value).exists():
-            raise serializers.ValidationError(
-                "Inventory record not found."
-            )
+            raise serializers.ValidationError("Inventory record not found.")
 
         return value
 
     def validate(self, attrs):
-        inventory = Inventory.objects.get(
-            id=attrs["inventory_id"]
-        )
+        inventory = Inventory.objects.get(id=attrs["inventory_id"])
 
         if (
             attrs["adjustment_type"] == "stock_out"
             and attrs["change_quantity"] > inventory.quantity
         ):
-            raise serializers.ValidationError(
-                "Insufficient stock available."
-            )
+            raise serializers.ValidationError("Insufficient stock available.")
 
         return attrs
 
 
 class InventorySerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(
-        source="product.name",
-        read_only=True
-    )
+    product_name = serializers.CharField(source="product.name", read_only=True)
 
-    branch_name = serializers.CharField(
-        source="branch.name",
-        read_only=True
-    )
+    branch_name = serializers.CharField(source="branch.name", read_only=True)
 
     class Meta:
         model = Inventory

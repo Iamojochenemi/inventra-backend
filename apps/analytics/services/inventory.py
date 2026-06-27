@@ -1,4 +1,4 @@
-from django.db.models import Sum, Count, F, Q
+from django.db.models import Count, F, Q, Sum
 
 from apps.inventory.models import Inventory
 

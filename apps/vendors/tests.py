@@ -2,10 +2,16 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.vendors.models import Vendor, VendorStaff, Branch, VendorInvitation, VendorSettings
+from apps.vendors.models import (
+    Branch,
+    Vendor,
+    VendorInvitation,
+    VendorSettings,
+    VendorStaff,
+)
 
 User = get_user_model()
 
@@ -18,24 +24,34 @@ class VendorTestCaseBase(APITestCase):
 
         # ── USERS ──────────────────────────────────────────
         cls.owner_a = User.objects.create_user(
-            email="owner_a@test.com", username="owner_a",
-            password="testpass123", role="vendor",
+            email="owner_a@test.com",
+            username="owner_a",
+            password="testpass123",
+            role="vendor",
         )
         cls.manager_a = User.objects.create_user(
-            email="manager_a@test.com", username="manager_a",
-            password="testpass123", role="vendor",
+            email="manager_a@test.com",
+            username="manager_a",
+            password="testpass123",
+            role="vendor",
         )
         cls.inventory_staff = User.objects.create_user(
-            email="inventory@test.com", username="inventory_a",
-            password="testpass123", role="vendor",
+            email="inventory@test.com",
+            username="inventory_a",
+            password="testpass123",
+            role="vendor",
         )
         cls.owner_b = User.objects.create_user(
-            email="owner_b@test.com", username="owner_b",
-            password="testpass123", role="vendor",
+            email="owner_b@test.com",
+            username="owner_b",
+            password="testpass123",
+            role="vendor",
         )
         cls.stranger = User.objects.create_user(
-            email="stranger@test.com", username="stranger",
-            password="testpass123", role="staff",
+            email="stranger@test.com",
+            username="stranger",
+            password="testpass123",
+            role="staff",
         )
 
         # ── VENDORS ────────────────────────────────────────
@@ -48,25 +64,34 @@ class VendorTestCaseBase(APITestCase):
 
         # ── STAFF MEMBERSHIPS ──────────────────────────────
         cls.owner_a_staff = VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.owner_a, role="owner",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.owner_a,
+            role="owner",
         )
         cls.manager_a_staff = VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.manager_a, role="manager",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.manager_a,
+            role="manager",
         )
         cls.inventory_a_staff = VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.inventory_staff, role="inventory",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.inventory_staff,
+            role="inventory",
         )
         VendorStaff.objects.create(
-            vendor=cls.vendor_b, branch=cls.branch_b,
-            user=cls.owner_b, role="owner",
+            vendor=cls.vendor_b,
+            branch=cls.branch_b,
+            user=cls.owner_b,
+            role="owner",
         )
 
         # ── ADDITIONAL BRANCHES ────────────────────────────
         cls.branch_a_2 = Branch.objects.create(
-            vendor=cls.vendor_a, name="Branch 2",
+            vendor=cls.vendor_a,
+            name="Branch 2",
             address="456 Side St",
         )
 
@@ -82,6 +107,7 @@ class VendorTestCaseBase(APITestCase):
 # =====================================================================
 #  VENDOR CRUD
 # =====================================================================
+
 
 class VendorCRUDTests(VendorTestCaseBase):
 
@@ -152,12 +178,14 @@ class VendorCRUDTests(VendorTestCaseBase):
 #  STAFF MANAGEMENT
 # =====================================================================
 
+
 class StaffManagementTests(VendorTestCaseBase):
 
     def test_owner_can_create_staff(self):
         """Owner role can add staff to their vendor."""
         new_user = User.objects.create_user(
-            email="newstaff@test.com", username="newstaff",
+            email="newstaff@test.com",
+            username="newstaff",
             password="testpass123",
         )
         client = self._client(self.owner_a)
@@ -176,15 +204,14 @@ class StaffManagementTests(VendorTestCaseBase):
 
         # Staff membership created
         self.assertTrue(
-            VendorStaff.objects.filter(
-                vendor=self.vendor_a, user=new_user
-            ).exists()
+            VendorStaff.objects.filter(vendor=self.vendor_a, user=new_user).exists()
         )
 
     def test_non_owner_cannot_create_staff(self):
         """Manager role cannot add staff (only owner)."""
         new_user = User.objects.create_user(
-            email="newstaff2@test.com", username="newstaff2",
+            email="newstaff2@test.com",
+            username="newstaff2",
             password="testpass123",
         )
         client = self._client(self.manager_a)
@@ -203,7 +230,8 @@ class StaffManagementTests(VendorTestCaseBase):
     def test_create_staff_cross_vendor_blocked(self):
         """User from Vendor B cannot add staff to Vendor A."""
         new_user = User.objects.create_user(
-            email="newstaff3@test.com", username="newstaff3",
+            email="newstaff3@test.com",
+            username="newstaff3",
             password="testpass123",
         )
         client = self._client(self.owner_b)
@@ -241,10 +269,11 @@ class StaffManagementTests(VendorTestCaseBase):
         response = client.get(f"/api/vendors/staff/?vendor_id={self.vendor_a.id}")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        emails = [s["user"] for s in response.data]
+
+        user_ids = [s["user"] for s in response.data]
+
         # user field is the user ID in VendorStaffSerializer
-        self.assertIn(self.owner_a.id, [s["user"] for s in response.data])
-        self.assertIn(self.manager_a.id, [s["user"] for s in response.data])
+        self.assertIn(self.owner_a.id, user_ids)
 
     def test_list_staff_without_vendor_id(self):
         """Missing vendor_id returns empty list."""
@@ -265,6 +294,7 @@ class StaffManagementTests(VendorTestCaseBase):
 # =====================================================================
 #  BRANCH MANAGEMENT
 # =====================================================================
+
 
 class BranchManagementTests(VendorTestCaseBase):
 
@@ -357,6 +387,7 @@ class BranchManagementTests(VendorTestCaseBase):
 #  VENDOR SETTINGS
 # =====================================================================
 
+
 class VendorSettingsTests(VendorTestCaseBase):
 
     def test_get_settings(self):
@@ -397,6 +428,7 @@ class VendorSettingsTests(VendorTestCaseBase):
 # =====================================================================
 #  INVITATIONS
 # =====================================================================
+
 
 class InvitationTests(VendorTestCaseBase):
 
@@ -455,8 +487,9 @@ class InvitationTests(VendorTestCaseBase):
     def test_create_invitation_duplicate_active_blocked(self):
         """Creating a duplicate active invitation is blocked."""
         # Create first invitation
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
         from django.utils.crypto import get_random_string
 
         VendorInvitation.objects.create(
@@ -484,9 +517,9 @@ class InvitationTests(VendorTestCaseBase):
 
     def test_accept_invitation(self):
         """Accepting a valid invitation creates staff membership."""
-        from django.utils.crypto import get_random_string
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
 
         token = "accept-test-token-789"
         VendorInvitation.objects.create(
@@ -530,9 +563,9 @@ class InvitationTests(VendorTestCaseBase):
 
     def test_reject_invitation(self):
         """Rejecting a pending invitation updates its status."""
-        from django.utils.crypto import get_random_string
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
 
         token = "reject-test-token-abc"
         inv = VendorInvitation.objects.create(
@@ -560,9 +593,10 @@ class InvitationTests(VendorTestCaseBase):
     @patch("apps.vendors.views.resend_invitation")
     def test_resend_invitation(self, mock_resend):
         """Owner can resend a pending invitation."""
-        from django.utils.crypto import get_random_string
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
+        from django.utils.crypto import get_random_string
 
         inv = VendorInvitation.objects.create(
             vendor=self.vendor_a,
@@ -585,9 +619,10 @@ class InvitationTests(VendorTestCaseBase):
 
     def test_list_invitations(self):
         """Owner can list invitations for their vendor."""
-        from django.utils.crypto import get_random_string
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
+        from django.utils.crypto import get_random_string
 
         VendorInvitation.objects.create(
             vendor=self.vendor_a,

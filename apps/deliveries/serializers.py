@@ -23,6 +23,7 @@ class DeliverySerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+
 class DeliveryLogSerializer(serializers.ModelSerializer):
 
     class Meta:

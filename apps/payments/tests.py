@@ -4,17 +4,17 @@ Paystack webhook listener tests.
 Uses mocked PaystackService so no live API calls are made.
 """
 
-from unittest.mock import patch
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 
-from apps.vendors.models import Vendor, VendorStaff
 from apps.orders.models import Order
 from apps.payments.models import Payment, PaymentWebhook
 from apps.payments.services import PaystackService, PaystackVerificationError
+from apps.vendors.models import Vendor, VendorStaff
 
 User = get_user_model()
 
@@ -27,46 +27,64 @@ class PaystackWebhookTestCase(APITestCase):
 
         # ── USERS ──────────────────────────────────────────
         cls.owner = User.objects.create_user(
-            email="owner@test.com", username="owner",
-            password="testpass123", role="vendor",
+            email="owner@test.com",
+            username="owner",
+            password="testpass123",
+            role="vendor",
         )
 
         # ── VENDOR ─────────────────────────────────────────
         cls.vendor = Vendor.objects.create(owner=cls.owner, name="Test Vendor")
         cls.branch = cls.vendor.branches.get(name="Main Branch")
         VendorStaff.objects.create(
-            vendor=cls.vendor, branch=cls.branch,
-            user=cls.owner, role="owner",
+            vendor=cls.vendor,
+            branch=cls.branch,
+            user=cls.owner,
+            role="owner",
         )
 
         # ── ORDER & PENDING PAYMENT ────────────────────────
         cls.order = Order.objects.create(
-            vendor=cls.vendor, branch=cls.branch,
-            customer_name="John Doe", total_amount=200.00,
-            created_by=cls.owner, status="pending",
+            vendor=cls.vendor,
+            branch=cls.branch,
+            customer_name="John Doe",
+            total_amount=200.00,
+            created_by=cls.owner,
+            status="pending",
         )
         cls.payment = Payment.objects.create(
-            order=cls.order, amount=200.00,
-            reference="INV-TEST-001", status="pending",
+            order=cls.order,
+            amount=200.00,
+            reference="INV-TEST-001",
+            status="pending",
         )
 
         # ── ALREADY-SUCCESSFUL PAYMENT (for dup tests) ─────
         cls.paid_order = Order.objects.create(
-            vendor=cls.vendor, branch=cls.branch,
-            customer_name="Jane Doe", total_amount=150.00,
-            created_by=cls.owner, status="confirmed",
+            vendor=cls.vendor,
+            branch=cls.branch,
+            customer_name="Jane Doe",
+            total_amount=150.00,
+            created_by=cls.owner,
+            status="confirmed",
         )
         cls.successful_payment = Payment.objects.create(
-            order=cls.paid_order, amount=150.00,
-            reference="INV-TEST-002", status="successful",
+            order=cls.paid_order,
+            amount=150.00,
+            reference="INV-TEST-002",
+            status="successful",
             gateway_transaction_id="gw-12345",
         )
 
     # ── HELPERS ────────────────────────────────────────────
 
     @staticmethod
-    def _webhook_payload(reference="INV-TEST-001", event="charge.success",
-                         status_val="success", amount=20000):
+    def _webhook_payload(
+        reference="INV-TEST-001",
+        event="charge.success",
+        status_val="success",
+        amount=20000,
+    ):
         return {
             "event": event,
             "data": {
@@ -95,6 +113,7 @@ class PaystackWebhookTestCase(APITestCase):
 #  200 OK ON VERIFIED EVENTS
 # =====================================================================
 
+
 @patch("apps.payments.views.PaystackService.__init__", return_value=None)
 class VerifiedWebhookTests(PaystackWebhookTestCase):
     """All tests in this class assert 200 OK for legitimate webhooks."""
@@ -102,7 +121,9 @@ class VerifiedWebhookTests(PaystackWebhookTestCase):
     @patch.object(PaystackService, "validate_webhook_signature", return_value=True)
     @patch.object(PaystackService, "handle_successful_payment")
     @patch("apps.payments.views.process_payment_success")
-    def test_successful_charge_returns_200(self, mock_process, mock_handle, mock_validate):
+    def test_successful_charge_returns_200(
+        self, mock_process, mock_handle, mock_validate
+    ):
         """charge.success for a pending payment returns 200 + 'success'."""
         payload = self._webhook_payload()
         response = self._post_webhook(payload)
@@ -122,7 +143,9 @@ class VerifiedWebhookTests(PaystackWebhookTestCase):
     @patch.object(PaystackService, "validate_webhook_signature", return_value=True)
     @patch.object(PaystackService, "handle_successful_payment")
     @patch("apps.payments.views.process_payment_success")
-    def test_webhook_creates_webhook_record(self, mock_process, mock_handle, mock_validate):
+    def test_webhook_creates_webhook_record(
+        self, mock_process, mock_handle, mock_validate
+    ):
         """Every processed webhook creates a PaymentWebhook audit record."""
         payload = self._webhook_payload()
         response = self._post_webhook(payload)
@@ -147,7 +170,9 @@ class VerifiedWebhookTests(PaystackWebhookTestCase):
     @patch.object(PaystackService, "validate_webhook_signature", return_value=True)
     @patch.object(PaystackService, "handle_successful_payment")
     @patch("apps.payments.views.process_payment_success")
-    def test_webhook_without_event_id_falls_back(self, mock_process, mock_handle, mock_validate):
+    def test_webhook_without_event_id_falls_back(
+        self, mock_process, mock_handle, mock_validate
+    ):
         """Payload missing data.id uses reference as event_id (no crash)."""
         payload = self._webhook_payload()
         # Remove data.id
@@ -162,6 +187,7 @@ class VerifiedWebhookTests(PaystackWebhookTestCase):
 # =====================================================================
 #  DUPLICATE PAYLOAD HANDLING (IDEMPOTENCY)
 # =====================================================================
+
 
 @patch("apps.payments.views.PaystackService.__init__", return_value=None)
 class DuplicateWebhookTests(PaystackWebhookTestCase):
@@ -209,7 +235,8 @@ class DuplicateWebhookTests(PaystackWebhookTestCase):
 
         # First call — handle_successful_payment raises
         with patch.object(
-            PaystackService, "handle_successful_payment",
+            PaystackService,
+            "handle_successful_payment",
             side_effect=PaystackVerificationError("First attempt failed"),
         ):
             resp1 = self._post_webhook(payload)
@@ -222,17 +249,24 @@ class DuplicateWebhookTests(PaystackWebhookTestCase):
         self.assertEqual(self.payment.status, "failed")
 
     @patch.object(PaystackService, "validate_webhook_signature", return_value=True)
-    def test_same_event_id_different_reference_creates_separate_record(self, mock_validate):
+    def test_same_event_id_different_reference_creates_separate_record(
+        self, mock_validate
+    ):
         """Different webhooks with same event_id but different payments are handled."""
         # Make a second pending payment
         order2 = Order.objects.create(
-            vendor=self.vendor, branch=self.branch,
-            customer_name="Alice", total_amount=100.00,
-            created_by=self.owner, status="pending",
+            vendor=self.vendor,
+            branch=self.branch,
+            customer_name="Alice",
+            total_amount=100.00,
+            created_by=self.owner,
+            status="pending",
         )
         Payment.objects.create(
-            order=order2, amount=100.00,
-            reference="INV-TEST-003", status="pending",
+            order=order2,
+            amount=100.00,
+            reference="INV-TEST-003",
+            status="pending",
         )
 
         payload1 = self._webhook_payload(reference="INV-TEST-001")
@@ -257,6 +291,7 @@ class DuplicateWebhookTests(PaystackWebhookTestCase):
 #  SIGNATURE & PAYLOAD VALIDATION
 # =====================================================================
 
+
 class WebhookValidationTests(PaystackWebhookTestCase):
 
     def test_invalid_signature_returns_401(self):
@@ -264,7 +299,8 @@ class WebhookValidationTests(PaystackWebhookTestCase):
         from apps.payments.services import WebhookSignatureError
 
         with patch.object(
-            PaystackService, "validate_webhook_signature",
+            PaystackService,
+            "validate_webhook_signature",
             side_effect=WebhookSignatureError("Invalid signature"),
         ):
             payload = self._webhook_payload()
@@ -275,7 +311,8 @@ class WebhookValidationTests(PaystackWebhookTestCase):
             self.assertIn("Invalid signature", str(data))
 
     @patch.object(
-        PaystackService, "validate_webhook_signature",
+        PaystackService,
+        "validate_webhook_signature",
         side_effect=Exception("Missing signature header"),
     )
     def test_missing_signature_header_returns_400(self, _):
@@ -332,12 +369,15 @@ class WebhookValidationTests(PaystackWebhookTestCase):
 #  VERIFICATION FAILURE RECOVERY
 # =====================================================================
 
+
 @patch("apps.payments.views.PaystackService.__init__", return_value=None)
 class WebhookRecoveryTests(PaystackWebhookTestCase):
 
     @patch.object(PaystackService, "validate_webhook_signature", return_value=True)
     @patch.object(PaystackService, "handle_successful_payment")
-    def test_verification_failure_marks_payment_failed(self, mock_handle, mock_validate):
+    def test_verification_failure_marks_payment_failed(
+        self, mock_handle, mock_validate
+    ):
         """If handle_successful_payment raises, the payment is marked failed."""
         mock_handle.side_effect = PaystackVerificationError(
             "Transaction verification failed"

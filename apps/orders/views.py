@@ -1,32 +1,29 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-
-from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
-
 from drf_spectacular.utils import (
-    extend_schema,
-    extend_schema_view,
     OpenApiParameter,
     OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
 )
+from rest_framework import generics
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
+from apps.audit_logs.services import create_audit_log
 from apps.common.mixins import TenantIsolationMixin
+from apps.deliveries.services import create_delivery_from_order
+from apps.inventory.models import Inventory
+from apps.notifications.tasks import send_notification_task
+from apps.vendors.services import validate_vendor_access
 
 from .models import Order, OrderStatusLog
 from .serializers import (
     OrderCreateSerializer,
     OrderSerializer,
-    OrderStatusUpdateSerializer
+    OrderStatusUpdateSerializer,
 )
-
-from apps.inventory.models import Inventory
-from apps.deliveries.services import create_delivery_from_order
-from apps.notifications.tasks import send_notification_task
-from apps.vendors.services import validate_vendor_access
-from apps.audit_logs.services import create_audit_log
 
 
 @extend_schema_view(
@@ -132,18 +129,15 @@ class OrderCreateView(generics.CreateAPIView):
         staff = user.vendorstaff_set.first()
 
         if not staff:
-            raise PermissionDenied(
-                "You are not assigned to any vendor."
-            )
+            raise PermissionDenied("You are not assigned to any vendor.")
 
         if staff.role not in ["owner", "manager"]:
-            raise PermissionDenied(
-                "You are not allowed to create orders."
-            )
+            raise PermissionDenied("You are not allowed to create orders.")
 
         order = serializer.save(created_by=user)
 
         from apps.payments.services import create_payment_for_order
+
         create_payment_for_order(order)
 
     def create(self, request, *args, **kwargs):
@@ -200,10 +194,7 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
         new_status = serializer.validated_data["status"]
         old_status = order.status
 
-        allowed = order.ALLOWED_TRANSITIONS.get(
-            old_status,
-            []
-        )
+        allowed = order.ALLOWED_TRANSITIONS.get(old_status, [])
 
         if new_status not in allowed:
             return Response(
@@ -219,17 +210,11 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
 
         with transaction.atomic():
 
-            if (
-                new_status == "cancelled"
-                and old_status in ["pending", "confirmed"]
-            ):
-                for item in order.items.select_related(
-                    "product"
-                ).all():
+            if new_status == "cancelled" and old_status in ["pending", "confirmed"]:
+                for item in order.items.select_related("product").all():
 
                     inventory = (
-                        Inventory.objects
-                        .select_for_update()
+                        Inventory.objects.select_for_update()
                         .filter(
                             product=item.product,
                             branch=order.branch,
@@ -251,10 +236,7 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
                 changed_by=request.user,
             )
 
-            if (
-                new_status == "confirmed"
-                and old_status == "pending"
-            ):
+            if new_status == "confirmed" and old_status == "pending":
                 create_delivery_from_order(order)
 
             create_audit_log(
@@ -267,9 +249,7 @@ class OrderStatusUpdateView(TenantIsolationMixin, generics.GenericAPIView):
                 new_values={
                     "status": new_status,
                 },
-                ip_address=request.META.get(
-                    "REMOTE_ADDR"
-                ),
+                ip_address=request.META.get("REMOTE_ADDR"),
                 user_agent=request.META.get(
                     "HTTP_USER_AGENT",
                     "",

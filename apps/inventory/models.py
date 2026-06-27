@@ -4,21 +4,20 @@ from django.utils.crypto import get_random_string
 
 class Warehouse(models.Model):
     """Warehouse model for storing inventory at specific locations."""
+
     vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.CASCADE,
-        related_name="warehouses"
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="warehouses"
     )
 
     branch = models.ForeignKey(
-        "vendors.Branch",
-        on_delete=models.CASCADE,
-        related_name="warehouses"
+        "vendors.Branch", on_delete=models.CASCADE, related_name="warehouses"
     )
 
     name = models.CharField(max_length=255)
     address = models.TextField(blank=True)
-    capacity = models.PositiveIntegerField(default=1000, help_text="Maximum items warehouse can hold")
+    capacity = models.PositiveIntegerField(
+        default=1000, help_text="Maximum items warehouse can hold"
+    )
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -32,9 +31,7 @@ class Warehouse(models.Model):
 
 class Category(models.Model):
     vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.CASCADE,
-        related_name="categories"
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="categories"
     )
 
     name = models.CharField(max_length=255)
@@ -50,9 +47,7 @@ class Category(models.Model):
 
 class Product(models.Model):
     vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.CASCADE,
-        related_name="products"
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="products"
     )
 
     category = models.ForeignKey(
@@ -60,23 +55,16 @@ class Product(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="products"
+        related_name="products",
     )
 
     name = models.CharField(max_length=255)
 
-    sku = models.CharField(
-        max_length=50,
-        unique=True,
-        blank=True
-    )
+    sku = models.CharField(max_length=50, unique=True, blank=True)
 
     description = models.TextField(blank=True)
 
-    price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2
-    )
+    price = models.DecimalField(max_digits=12, decimal_places=2)
 
     is_active = models.BooleanField(default=True)
 
@@ -96,15 +84,11 @@ class Product(models.Model):
 
 class Inventory(models.Model):
     product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="inventory_records"
+        Product, on_delete=models.CASCADE, related_name="inventory_records"
     )
 
     branch = models.ForeignKey(
-        "vendors.Branch",
-        on_delete=models.CASCADE,
-        related_name="inventory_records"
+        "vendors.Branch", on_delete=models.CASCADE, related_name="inventory_records"
     )
 
     warehouse = models.ForeignKey(
@@ -113,7 +97,7 @@ class Inventory(models.Model):
         related_name="inventory_records",
         null=True,
         blank=True,
-        help_text="Specific warehouse within the branch (optional)"
+        help_text="Specific warehouse within the branch (optional)",
     )
 
     quantity = models.PositiveIntegerField(default=0)
@@ -151,17 +135,12 @@ class InventoryLog(models.Model):
     )
 
     inventory = models.ForeignKey(
-        Inventory,
-        on_delete=models.CASCADE,
-        related_name="logs"
+        Inventory, on_delete=models.CASCADE, related_name="logs"
     )
 
     change_quantity = models.IntegerField()
 
-    adjustment_type = models.CharField(
-        max_length=20,
-        choices=ADJUSTMENT_TYPES
-    )
+    adjustment_type = models.CharField(max_length=20, choices=ADJUSTMENT_TYPES)
 
     reason = models.TextField(blank=True)
 
@@ -169,7 +148,7 @@ class InventoryLog(models.Model):
         "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="inventory_logs"
+        related_name="inventory_logs",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -183,8 +162,7 @@ class InventoryLog(models.Model):
         from apps.notifications.tasks import send_notification_task
 
         inventory = self.inventory.apply_change(
-            self.change_quantity,
-            self.adjustment_type
+            self.change_quantity, self.adjustment_type
         )
 
         if inventory.is_low_stock():
@@ -196,13 +174,10 @@ class InventoryLog(models.Model):
                 message=(
                     f"{inventory.product.name} "
                     f"is low on stock ({inventory.quantity} left)"
-                )
+                ),
             )
 
-        return {
-            "inventory": inventory,
-            "is_low_stock": inventory.is_low_stock()
-        }
+        return {"inventory": inventory, "is_low_stock": inventory.is_low_stock()}
 
     def __str__(self):
         return (

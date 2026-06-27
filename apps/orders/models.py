@@ -17,70 +17,45 @@ class Order(models.Model):
     }
 
     vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.CASCADE,
-        related_name="orders"
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="orders"
     )
 
     branch = models.ForeignKey(
-        "vendors.Branch",
-        on_delete=models.CASCADE,
-        related_name="orders"
+        "vendors.Branch", on_delete=models.CASCADE, related_name="orders"
     )
 
     customer_name = models.CharField(max_length=255)
     customer_phone = models.CharField(max_length=50, blank=True)
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="pending"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
-    total_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0
-    )
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     created_by = models.ForeignKey(
         "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="created_orders"
+        related_name="created_orders",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     # 🔥 SOURCE OF TRUTH FOR PRICING
     def calculate_total(self):
-        return sum(
-            item.quantity * item.unit_price
-            for item in self.items.all()
-        )
+        return sum(item.quantity * item.unit_price for item in self.items.all())
 
     def __str__(self):
         return f"Order #{self.id} - {self.vendor.name}"
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(
-        Order,
-        on_delete=models.CASCADE,
-        related_name="items"
-    )
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
 
-    product = models.ForeignKey(
-        "inventory.Product",
-        on_delete=models.CASCADE
-    )
+    product = models.ForeignKey("inventory.Product", on_delete=models.CASCADE)
 
     quantity = models.PositiveIntegerField()
 
-    unit_price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2
-    )
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
@@ -88,18 +63,14 @@ class OrderItem(models.Model):
 
 class OrderStatusLog(models.Model):
     order = models.ForeignKey(
-        Order,
-        on_delete=models.CASCADE,
-        related_name="status_logs"
+        Order, on_delete=models.CASCADE, related_name="status_logs"
     )
 
     previous_status = models.CharField(max_length=20)
     new_status = models.CharField(max_length=20)
 
     changed_by = models.ForeignKey(
-        "accounts.User",
-        on_delete=models.SET_NULL,
-        null=True
+        "accounts.User", on_delete=models.SET_NULL, null=True
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

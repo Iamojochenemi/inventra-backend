@@ -1,37 +1,35 @@
-from rest_framework import generics
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-
 from drf_spectacular.utils import (
-    extend_schema,
-    extend_schema_view,
-    OpenApiResponse,
     OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
 )
+from rest_framework import generics
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import Vendor, VendorStaff, Branch, VendorInvitation, VendorSettings
-from .serializers import (
-    VendorSerializer,
-    VendorStaffSerializer,
-    BranchSerializer,
-    VendorInvitationCreateSerializer,
-    VendorInvitationSerializer,
-    AcceptInvitationSerializer,
-    RejectInvitationSerializer,
-    VendorSettingsSerializer,
-)
-
-from apps.vendors.services.access_service import validate_vendor_access
-from apps.vendors.services.vendor_service import get_user_vendors
 from apps.vendors.services import (
-    create_invitation,
     accept_invitation,
+    create_invitation,
     reject_invitation,
     resend_invitation,
 )
+from apps.vendors.services.access_service import validate_vendor_access
+from apps.vendors.services.vendor_service import get_user_vendors
 from apps.vendors.tasks import send_vendor_invitation_email_task
+
+from .models import Branch, Vendor, VendorInvitation, VendorSettings, VendorStaff
+from .serializers import (
+    AcceptInvitationSerializer,
+    BranchSerializer,
+    RejectInvitationSerializer,
+    VendorInvitationCreateSerializer,
+    VendorInvitationSerializer,
+    VendorSerializer,
+    VendorSettingsSerializer,
+    VendorStaffSerializer,
+)
 
 
 # ------------------------
@@ -304,11 +302,13 @@ class AcceptInvitationView(APIView):
         if not success:
             return Response({"error": message}, status=400)
 
-        return Response({
-            "message": message,
-            "vendor_id": vendor_staff.vendor_id,
-            "role": vendor_staff.role,
-        })
+        return Response(
+            {
+                "message": message,
+                "vendor_id": vendor_staff.vendor_id,
+                "role": vendor_staff.role,
+            }
+        )
 
 
 @extend_schema(

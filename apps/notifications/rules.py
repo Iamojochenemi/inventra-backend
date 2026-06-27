@@ -21,8 +21,7 @@ def get_notification_recipients(vendor, notification_type):
     allowed_roles = list(set(base_roles + extra_roles))
 
     staff = VendorStaff.objects.filter(
-        vendor=vendor,
-        role__in=allowed_roles
+        vendor=vendor, role__in=allowed_roles
     ).select_related("user")
 
     return [s.user for s in staff]

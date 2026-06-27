@@ -1,24 +1,23 @@
-from rest_framework import generics
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import generics
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from drf_spectacular.utils import extend_schema, OpenApiResponse
-
-from .serializers import (
-    RegisterSerializer,
-    VerifyEmailSerializer,
-    ResendVerificationSerializer,
-    PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer,
-)
 from .permissions import IsAdminOrVendor
+from .serializers import (
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
+    RegisterSerializer,
+    ResendVerificationSerializer,
+    VerifyEmailSerializer,
+)
 from .services.auth_service import (
+    reset_password,
+    send_password_reset_email,
     send_verification_email,
     verify_email,
-    send_password_reset_email,
-    reset_password,
 )
 
 User = get_user_model()
@@ -37,6 +36,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+
 
 @extend_schema(
     tags=["Auth"],
@@ -62,14 +62,16 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
-        return Response({
-            "id": user.id,
-            "email": user.email,
-            "username": user.username,
-            "role": user.role,
-            "phone_number": user.phone_number,
-            "email_verified": user.email_verified,
-        })
+        return Response(
+            {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "role": user.role,
+                "phone_number": user.phone_number,
+                "email_verified": user.email_verified,
+            }
+        )
 
 
 @extend_schema(
@@ -81,11 +83,13 @@ class TestProtectedView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrVendor]
 
     def get(self, request):
-        return Response({
-            "message": "Vendor access granted",
-            "user": request.user.email,
-            "role": request.user.role,
-        })
+        return Response(
+            {
+                "message": "Vendor access granted",
+                "user": request.user.email,
+                "role": request.user.role,
+            }
+        )
 
 
 @extend_schema(
@@ -119,7 +123,9 @@ class VerifyEmailView(APIView):
     description="Resend the email verification link to a user's email address.",
     request=ResendVerificationSerializer,
     responses={
-        200: OpenApiResponse(description="Verification email sent (or email already verified)"),
+        200: OpenApiResponse(
+            description="Verification email sent (or email already verified)"
+        ),
         400: OpenApiResponse(description="Email is required"),
     },
 )
@@ -134,7 +140,9 @@ class ResendVerificationView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"message": "If the email exists, a verification link was sent."})
+            return Response(
+                {"message": "If the email exists, a verification link was sent."}
+            )
 
         if user.email_verified:
             return Response({"message": "Email already verified"})

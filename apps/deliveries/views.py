@@ -1,25 +1,22 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
+from apps.audit_logs.services import create_audit_log
+from apps.common.mixins import TenantIsolationMixin
+from apps.notifications.services import create_notification
+from apps.vendors.models import VendorStaff
 
 from .models import Delivery, DeliveryLog
-from apps.common.mixins import TenantIsolationMixin
-
 from .serializers import (
-    DeliverySerializer,
     AssignRiderSerializer,
+    DeliverySerializer,
     UpdateDeliveryStatusSerializer,
 )
-from apps.vendors.models import VendorStaff
-from apps.notifications.services import create_notification
-
-from apps.audit_logs.services import create_audit_log
 
 
 @extend_schema_view(
@@ -58,7 +55,9 @@ from apps.audit_logs.services import create_audit_log
         request=UpdateDeliveryStatusSerializer,
         responses={
             200: OpenApiResponse(description="Status updated successfully"),
-            400: OpenApiResponse(description="Invalid status or transition not allowed"),
+            400: OpenApiResponse(
+                description="Invalid status or transition not allowed"
+            ),
             403: OpenApiResponse(description="Only riders can update delivery status"),
             404: OpenApiResponse(description="Delivery not found"),
         },
@@ -81,9 +80,7 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
         ).distinct()
 
     def get_staff(self, user, delivery):
-        return user.vendorstaff_set.filter(
-            vendor=delivery.order.vendor
-        ).first()
+        return user.vendorstaff_set.filter(vendor=delivery.order.vendor).first()
 
     # -------------------------
     # ASSIGN RIDER
@@ -95,10 +92,7 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
         staff = self.get_staff(request.user, delivery)
 
         if not staff or staff.role != "dispatcher":
-            return Response(
-                {"error": "Only dispatchers can assign riders"},
-                status=403
-            )
+            return Response({"error": "Only dispatchers can assign riders"}, status=403)
 
         rider_id = request.data.get("rider_id")
         rider = get_object_or_404(VendorStaff, id=rider_id)
@@ -117,7 +111,7 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
             event_type="rider_assignment",
             previous_value=str(old_rider.id) if old_rider else "",
             new_value=str(rider.id),
-            changed_by=request.user
+            changed_by=request.user,
         )
 
         # -------------------------
@@ -129,13 +123,10 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
             action="update",
             old_values={
                 "assigned_rider": old_rider.id if old_rider else None,
-                "status": "pending"
+                "status": "pending",
             },
-            new_values={
-                "assigned_rider": rider.id,
-                "status": "assigned"
-            },
-            reason="Rider assigned to delivery"
+            new_values={"assigned_rider": rider.id, "status": "assigned"},
+            reason="Rider assigned to delivery",
         )
 
         # -------------------------
@@ -145,15 +136,17 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
             user=delivery.order.created_by,
             type="delivery",
             title="Rider Assigned",
-            message=f"Rider has been assigned to Order #{delivery.order.id}"
+            message=f"Rider has been assigned to Order #{delivery.order.id}",
         )
 
-        return Response({
-            "message": "Rider assigned successfully",
-            "delivery_id": delivery.id,
-            "rider_id": rider.id,
-            "status": delivery.status
-        })
+        return Response(
+            {
+                "message": "Rider assigned successfully",
+                "delivery_id": delivery.id,
+                "rider_id": rider.id,
+                "status": delivery.status,
+            }
+        )
 
     # -------------------------
     # UPDATE DELIVERY STATUS
@@ -166,18 +159,14 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
 
         if not staff or staff.role != "rider":
             return Response(
-                {"error": "Only riders can update delivery status"},
-                status=403
+                {"error": "Only riders can update delivery status"}, status=403
             )
 
         new_status = request.data.get("status")
         recipient_name = request.data.get("recipient_name", "")
 
         if new_status not in dict(Delivery.STATUS_CHOICES):
-            return Response(
-                {"error": "Invalid status"},
-                status=400
-            )
+            return Response({"error": "Invalid status"}, status=400)
 
         old_status = delivery.status
 
@@ -187,9 +176,9 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
             return Response(
                 {
                     "error": f"Cannot change from '{old_status}' to '{new_status}'",
-                    "allowed": allowed
+                    "allowed": allowed,
                 },
-                status=400
+                status=400,
             )
 
         delivery.status = new_status
@@ -204,7 +193,7 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
                 user=delivery.order.created_by,
                 type="delivery",
                 title="Delivery Completed",
-                message=f"Order #{delivery.order.id} has been delivered successfully"
+                message=f"Order #{delivery.order.id} has been delivered successfully",
             )
 
         delivery.save()
@@ -217,7 +206,7 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
             event_type="status_change",
             previous_value=old_status,
             new_value=new_status,
-            changed_by=request.user
+            changed_by=request.user,
         )
 
         # -------------------------
@@ -228,18 +217,17 @@ class DeliveryViewSet(TenantIsolationMixin, viewsets.ReadOnlyModelViewSet):
             obj=delivery,
             action="update",
             old_values={"status": old_status},
-            new_values={
-                "status": new_status,
-                "recipient_name": recipient_name
-            },
-            reason="Delivery status update"
+            new_values={"status": new_status, "recipient_name": recipient_name},
+            reason="Delivery status update",
         )
 
-        return Response({
-            "message": "Status updated successfully",
-            "delivery_id": delivery.id,
-            "old_status": old_status,
-            "new_status": new_status,
-            "recipient_name": delivery.recipient_name,
-            "delivered_at": delivery.delivered_at
-        })
+        return Response(
+            {
+                "message": "Status updated successfully",
+                "delivery_id": delivery.id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "recipient_name": delivery.recipient_name,
+                "delivered_at": delivery.delivered_at,
+            }
+        )

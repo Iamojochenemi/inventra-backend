@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Vendor, VendorStaff, Branch, VendorInvitation, VendorSettings
+
+from .models import Branch, Vendor, VendorInvitation, VendorSettings, VendorStaff
 
 
 class VendorSerializer(serializers.ModelSerializer):
@@ -12,15 +13,10 @@ class VendorSerializer(serializers.ModelSerializer):
         request = self.context["request"]
 
         # create vendor
-        vendor = Vendor.objects.create(
-            owner=request.user,
-            **validated_data
-        )
+        vendor = Vendor.objects.create(owner=request.user, **validated_data)
 
         # get auto-created Main Branch
-        main_branch = vendor.branches.filter(
-            name="Main Branch"
-        ).first()
+        main_branch = vendor.branches.filter(name="Main Branch").first()
 
         if not main_branch:
             raise serializers.ValidationError(
@@ -29,10 +25,7 @@ class VendorSerializer(serializers.ModelSerializer):
 
         # create owner membership
         VendorStaff.objects.create(
-            vendor=vendor,
-            branch=main_branch,
-            user=request.user,
-            role="owner"
+            vendor=vendor, branch=main_branch, user=request.user, role="owner"
         )
 
         return vendor
@@ -51,14 +44,7 @@ class VendorStaffSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VendorStaff
-        fields = [
-            "id",
-            "vendor",
-            "branch",
-            "user",
-            "role",
-            "created_at"
-        ]
+        fields = ["id", "vendor", "branch", "user", "role", "created_at"]
         read_only_fields = ["id", "created_at"]
         validators = []
 
@@ -68,19 +54,12 @@ class VendorStaffSerializer(serializers.ModelSerializer):
         branch = attrs.get("branch")
 
         # prevent duplicate membership
-        if VendorStaff.objects.filter(
-            vendor=vendor,
-            user=user
-        ).exists():
-            raise serializers.ValidationError(
-                "User already belongs to this vendor."
-            )
+        if VendorStaff.objects.filter(vendor=vendor, user=user).exists():
+            raise serializers.ValidationError("User already belongs to this vendor.")
 
         # ensure branch belongs to vendor
         if branch and branch.vendor != vendor:
-            raise serializers.ValidationError(
-                "Branch does not belong to this vendor."
-            )
+            raise serializers.ValidationError("Branch does not belong to this vendor.")
 
         return attrs
 
@@ -92,9 +71,7 @@ class VendorStaffSerializer(serializers.ModelSerializer):
 
         # auto-assign Main Branch if none provided
         if not branch:
-            branch = vendor.branches.filter(
-                name="Main Branch"
-            ).first()
+            branch = vendor.branches.filter(name="Main Branch").first()
 
         if not branch:
             raise serializers.ValidationError(
@@ -102,40 +79,23 @@ class VendorStaffSerializer(serializers.ModelSerializer):
             )
 
         return VendorStaff.objects.create(
-            vendor=vendor,
-            branch=branch,
-            user=user,
-            role=role
+            vendor=vendor, branch=branch, user=user, role=role
         )
 
 
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = [
-            "id",
-            "vendor",
-            "name",
-            "address",
-            "is_active",
-            "created_at"
-        ]
+        fields = ["id", "vendor", "name", "address", "is_active", "created_at"]
 
-        read_only_fields = [
-            "id",
-            "is_active",
-            "created_at"
-        ]
+        read_only_fields = ["id", "is_active", "created_at"]
 
     def validate(self, attrs):
         vendor = attrs["vendor"]
         name = attrs["name"]
 
         # prevent duplicate branch names per vendor
-        if Branch.objects.filter(
-            vendor=vendor,
-            name=name
-        ).exists():
+        if Branch.objects.filter(vendor=vendor, name=name).exists():
             raise serializers.ValidationError(
                 "Branch with this name already exists for this vendor."
             )
@@ -172,7 +132,6 @@ class AcceptInvitationSerializer(serializers.Serializer):
     password = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
 
-
 class RejectInvitationSerializer(serializers.Serializer):
     token = serializers.CharField()
 
@@ -195,6 +154,7 @@ class VendorSettingsSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["updated_at"]
+
 
 class ResendInvitationSerializer(serializers.Serializer):
     pass

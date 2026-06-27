@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .services import create_payment_for_order
+
 from apps.orders.models import Order
+
+from .services import create_payment_for_order
 
 
 class PaymentInitializeSerializer(serializers.Serializer):

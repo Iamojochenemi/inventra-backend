@@ -1,10 +1,10 @@
 from django.core.cache import cache
 
 from apps.analytics.services.customer import get_customer_intelligence
-from apps.analytics.services.revenue import get_revenue_intelligence
+from apps.analytics.services.delivery import get_delivery_intelligence
 from apps.analytics.services.inventory import get_inventory_intelligence
 from apps.analytics.services.profit import get_profit_loss
-from apps.analytics.services.delivery import get_delivery_intelligence
+from apps.analytics.services.revenue import get_revenue_intelligence
 
 
 def get_vendor_dashboard(vendor):

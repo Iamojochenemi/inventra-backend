@@ -76,9 +76,7 @@ class TenantIsolationMixin:
 
         user = getattr(self.request, "user", None)
         if user is not None and user.is_authenticated:
-            return queryset.filter(
-                **{f"{self.tenant_vendor_field}__staff__user": user}
-            )
+            return queryset.filter(**{f"{self.tenant_vendor_field}__staff__user": user})
         return queryset
 
     def get_queryset(self):

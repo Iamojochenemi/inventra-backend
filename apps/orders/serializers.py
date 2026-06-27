@@ -1,9 +1,8 @@
-from django.db import transaction
 from rest_framework import serializers
 
-from .models import Order, OrderItem, OrderStatusLog
-from apps.inventory.models import Inventory, Product
 from apps.payments.models import Payment
+
+from .models import Order, OrderItem, OrderStatusLog
 
 
 # -----------------------
@@ -95,9 +94,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         branch = attrs.get("branch")
 
         if not branch:
-            raise serializers.ValidationError(
-                {"error": "Branch is required."}
-            )
+            raise serializers.ValidationError({"error": "Branch is required."})
 
         if branch.vendor != staff.vendor:
             raise serializers.ValidationError(
@@ -107,15 +104,14 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         items = self.initial_data.get("items")
 
         if not items or len(items) == 0:
-            raise serializers.ValidationError(
-                {"error": "Items cannot be empty."}
-            )
+            raise serializers.ValidationError({"error": "Items cannot be empty."})
 
         return attrs
 
     def create(self, validated_data):
-        from apps.orders.services import create_order_with_items
         from rest_framework.exceptions import ValidationError
+
+        from apps.orders.services import create_order_with_items
 
         items_data = validated_data.pop("items")
 
@@ -135,10 +131,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         except Exception as e:
             # fallback safe API error (prevents HTML crash page)
-            raise ValidationError({
-                "error": "Order creation failed",
-                "details": str(e)
-            })
+            raise ValidationError({"error": "Order creation failed", "details": str(e)})
 
 
 # -----------------------

@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+from django.db.models import Count
 
 from apps.orders.models import Order
 
@@ -10,11 +10,15 @@ def get_customer_intelligence(vendor):
     Groups orders by (customer_name, customer_phone) and uses conditional
     Count to bucket customers into repeat vs. one-time in one pass.
     """
-    customers = Order.objects.filter(vendor=vendor).values(
-        "customer_name",
-        "customer_phone",
-    ).annotate(
-        total_orders=Count("id"),
+    customers = (
+        Order.objects.filter(vendor=vendor)
+        .values(
+            "customer_name",
+            "customer_phone",
+        )
+        .annotate(
+            total_orders=Count("id"),
+        )
     )
 
     total_customers = customers.count()

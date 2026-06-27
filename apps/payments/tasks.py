@@ -21,14 +21,19 @@ def generate_invoice_pdf_task(self, invoice_id):
     Retries up to 3 times with a 60s delay on transient failures.
     """
     try:
-        invoice = Invoice.objects.select_related(
-            "order__vendor__settings",
-        ).prefetch_related(
-            "order__items__product",
-        ).get(id=invoice_id)
+        invoice = (
+            Invoice.objects.select_related(
+                "order__vendor__settings",
+            )
+            .prefetch_related(
+                "order__items__product",
+            )
+            .get(id=invoice_id)
+        )
     except Invoice.DoesNotExist:
         logger.error(
-            "generate_invoice_pdf_task: invoice %s not found", invoice_id,
+            "generate_invoice_pdf_task: invoice %s not found",
+            invoice_id,
         )
         return {"success": False, "error": "Invoice not found"}
 
@@ -43,6 +48,7 @@ def generate_invoice_pdf_task(self, invoice_id):
     except Exception as e:
         logger.error(
             "Failed to generate PDF for invoice %s: %s",
-            invoice.invoice_number, e,
+            invoice.invoice_number,
+            e,
         )
         raise

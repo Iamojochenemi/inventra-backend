@@ -1,6 +1,6 @@
-from django.db import models
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 
 class AuditLog(models.Model):
@@ -17,61 +17,38 @@ class AuditLog(models.Model):
     )
 
     user = models.ForeignKey(
-        "accounts.User",
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="audit_logs"
+        "accounts.User", on_delete=models.SET_NULL, null=True, related_name="audit_logs"
     )
 
-    content_type = models.ForeignKey(
-        ContentType,
-        on_delete=models.CASCADE
-    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
 
     object_id = models.PositiveIntegerField()
 
-    content_object = GenericForeignKey(
-        "content_type",
-        "object_id"
-    )
+    content_object = GenericForeignKey("content_type", "object_id")
 
-    action = models.CharField(
-        max_length=20,
-        choices=ACTION_CHOICES
-    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
 
     old_values = models.JSONField(
-        blank=True,
-        null=True,
-        help_text="Previous values of changed fields"
+        blank=True, null=True, help_text="Previous values of changed fields"
     )
 
     new_values = models.JSONField(
-        blank=True,
-        null=True,
-        help_text="New values of changed fields"
+        blank=True, null=True, help_text="New values of changed fields"
     )
 
     ip_address = models.GenericIPAddressField(
-        blank=True,
-        null=True,
-        help_text="IP address where change originated"
+        blank=True, null=True, help_text="IP address where change originated"
     )
 
     user_agent = models.TextField(
-        blank=True,
-        null=True,
-        help_text="User agent string from request"
+        blank=True, null=True, help_text="User agent string from request"
     )
 
     reason = models.TextField(
-        blank=True,
-        help_text="Reason for the change (if provided)"
+        blank=True, help_text="Reason for the change (if provided)"
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -96,17 +73,11 @@ class EntitySnapshot(models.Model):
     Useful for tracking state changes over time.
     """
 
-    content_type = models.ForeignKey(
-        ContentType,
-        on_delete=models.CASCADE
-    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
 
     object_id = models.PositiveIntegerField()
 
-    content_object = GenericForeignKey(
-        "content_type",
-        "object_id"
-    )
+    content_object = GenericForeignKey("content_type", "object_id")
 
     snapshot_data = models.JSONField(
         help_text="Complete state of entity at snapshot time"
@@ -115,12 +86,10 @@ class EntitySnapshot(models.Model):
     reason = models.CharField(
         max_length=255,
         blank=True,
-        help_text="Why snapshot was taken (e.g., 'Status change', 'Order completion')"
+        help_text="Why snapshot was taken (e.g., 'Status change', 'Order completion')",
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]

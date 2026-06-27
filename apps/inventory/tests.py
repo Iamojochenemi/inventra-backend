@@ -2,11 +2,11 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.inventory.models import Category, Inventory, InventoryLog, Product
 from apps.vendors.models import Vendor, VendorStaff
-from apps.inventory.models import Category, Product, Inventory, InventoryLog
 
 User = get_user_model()
 
@@ -19,24 +19,34 @@ class InventoryTestCaseBase(APITestCase):
 
         # ── USERS ──────────────────────────────────────────
         cls.owner_a = User.objects.create_user(
-            email="owner_a@test.com", username="owner_a",
-            password="testpass123", role="vendor",
+            email="owner_a@test.com",
+            username="owner_a",
+            password="testpass123",
+            role="vendor",
         )
         cls.manager_a = User.objects.create_user(
-            email="manager_a@test.com", username="manager_a",
-            password="testpass123", role="vendor",
+            email="manager_a@test.com",
+            username="manager_a",
+            password="testpass123",
+            role="vendor",
         )
         cls.inventory_user = User.objects.create_user(
-            email="inv_staff@test.com", username="inv_staff",
-            password="testpass123", role="vendor",
+            email="inv_staff@test.com",
+            username="inv_staff",
+            password="testpass123",
+            role="vendor",
         )
         cls.owner_b = User.objects.create_user(
-            email="owner_b@test.com", username="owner_b",
-            password="testpass123", role="vendor",
+            email="owner_b@test.com",
+            username="owner_b",
+            password="testpass123",
+            role="vendor",
         )
         cls.stranger = User.objects.create_user(
-            email="stranger@test.com", username="stranger",
-            password="testpass123", role="staff",
+            email="stranger@test.com",
+            username="stranger",
+            password="testpass123",
+            role="staff",
         )
 
         # ── VENDORS ────────────────────────────────────────
@@ -48,47 +58,65 @@ class InventoryTestCaseBase(APITestCase):
 
         # ── STAFF ──────────────────────────────────────────
         VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.owner_a, role="owner",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.owner_a,
+            role="owner",
         )
         VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.manager_a, role="manager",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.manager_a,
+            role="manager",
         )
         VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.inventory_user, role="inventory",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.inventory_user,
+            role="inventory",
         )
         VendorStaff.objects.create(
-            vendor=cls.vendor_b, branch=cls.branch_b,
-            user=cls.owner_b, role="owner",
+            vendor=cls.vendor_b,
+            branch=cls.branch_b,
+            user=cls.owner_b,
+            role="owner",
         )
 
         # ── CATEGORIES ─────────────────────────────────────
         cls.category_a = Category.objects.create(
-            vendor=cls.vendor_a, name="Electronics",
+            vendor=cls.vendor_a,
+            name="Electronics",
         )
         cls.category_b = Category.objects.create(
-            vendor=cls.vendor_b, name="Furniture",
+            vendor=cls.vendor_b,
+            name="Furniture",
         )
 
         # ── PRODUCTS ───────────────────────────────────────
         cls.product_a = Product.objects.create(
-            vendor=cls.vendor_a, category=cls.category_a,
-            name="Widget", price=25.00,
+            vendor=cls.vendor_a,
+            category=cls.category_a,
+            name="Widget",
+            price=25.00,
         )
         cls.product_b = Product.objects.create(
-            vendor=cls.vendor_b, category=cls.category_b,
-            name="Chair", price=100.00,
+            vendor=cls.vendor_b,
+            category=cls.category_b,
+            name="Chair",
+            price=100.00,
         )
 
         # ── INVENTORY ──────────────────────────────────────
         cls.inv_a = Inventory.objects.create(
-            product=cls.product_a, branch=cls.branch_a, quantity=50,
+            product=cls.product_a,
+            branch=cls.branch_a,
+            quantity=50,
             low_stock_threshold=5,
         )
         cls.inv_b = Inventory.objects.create(
-            product=cls.product_b, branch=cls.branch_b, quantity=10,
+            product=cls.product_b,
+            branch=cls.branch_b,
+            quantity=10,
             low_stock_threshold=3,
         )
 
@@ -104,6 +132,7 @@ class InventoryTestCaseBase(APITestCase):
 # =====================================================================
 #  CATEGORIES
 # =====================================================================
+
 
 class CategoryTests(InventoryTestCaseBase):
 
@@ -182,6 +211,7 @@ class CategoryTests(InventoryTestCaseBase):
 # =====================================================================
 #  PRODUCTS
 # =====================================================================
+
 
 class ProductTests(InventoryTestCaseBase):
 
@@ -294,6 +324,7 @@ class ProductTests(InventoryTestCaseBase):
 # =====================================================================
 #  INVENTORY ADJUSTMENTS
 # =====================================================================
+
 
 class InventoryAdjustmentTests(InventoryTestCaseBase):
 
@@ -444,6 +475,7 @@ class InventoryAdjustmentTests(InventoryTestCaseBase):
 #  LOW STOCK TRIGGER
 # =====================================================================
 
+
 class LowStockTests(InventoryTestCaseBase):
 
     @patch("apps.notifications.tasks.send_notification_task.delay")
@@ -499,6 +531,7 @@ class LowStockTests(InventoryTestCaseBase):
 #  INVENTORY LISTING
 # =====================================================================
 
+
 class InventoryListTests(InventoryTestCaseBase):
 
     def test_list_inventory_own_vendor(self):
@@ -523,9 +556,7 @@ class InventoryListTests(InventoryTestCaseBase):
     def test_list_inventory_filter_by_product(self):
         """Filter inventory by product ID."""
         client = self._client(self.owner_a)
-        response = client.get(
-            f"/api/inventory/inventory/?product={self.product_a.id}"
-        )
+        response = client.get(f"/api/inventory/inventory/?product={self.product_a.id}")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)

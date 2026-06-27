@@ -38,8 +38,9 @@ class User(AbstractUser):
 
     def generate_password_reset_token(self):
         """Generate a unique token for password reset."""
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
 
         self.password_reset_token = get_random_string(64)
         self.password_reset_token_expires_at = timezone.now() + timedelta(hours=24)

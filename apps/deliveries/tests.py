@@ -2,14 +2,14 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.vendors.models import Vendor, VendorStaff
-from apps.inventory.models import Product, Category, Inventory
-from apps.orders.models import Order
-from apps.deliveries.models import Delivery, DeliveryLog
+from apps.deliveries.models import DeliveryLog
 from apps.deliveries.services import create_delivery_from_order
+from apps.inventory.models import Category, Inventory, Product
+from apps.orders.models import Order
+from apps.vendors.models import Vendor, VendorStaff
 
 User = get_user_model()
 
@@ -22,16 +22,24 @@ class DeliveryTestCaseBase(APITestCase):
 
         # ── USERS ──────────────────────────────────────────
         cls.owner_user = User.objects.create_user(
-            email="owner@va.com", username="owner_a", password="testpass123",
+            email="owner@va.com",
+            username="owner_a",
+            password="testpass123",
         )
         cls.dispatcher_user = User.objects.create_user(
-            email="dispatch@va.com", username="dispatch_a", password="testpass123",
+            email="dispatch@va.com",
+            username="dispatch_a",
+            password="testpass123",
         )
         cls.rider_user = User.objects.create_user(
-            email="rider@va.com", username="rider_a", password="testpass123",
+            email="rider@va.com",
+            username="rider_a",
+            password="testpass123",
         )
         cls.other_vendor_user = User.objects.create_user(
-            email="owner@vb.com", username="owner_b", password="testpass123",
+            email="owner@vb.com",
+            username="owner_b",
+            password="testpass123",
         )
 
         # ── VENDORS ────────────────────────────────────────
@@ -44,44 +52,63 @@ class DeliveryTestCaseBase(APITestCase):
 
         # ── STAFF ──────────────────────────────────────────
         cls.owner_staff = VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.owner_user, role="owner",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.owner_user,
+            role="owner",
         )
         cls.dispatcher_staff = VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.dispatcher_user, role="dispatcher",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.dispatcher_user,
+            role="dispatcher",
         )
         cls.rider_staff = VendorStaff.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            user=cls.rider_user, role="rider",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            user=cls.rider_user,
+            role="rider",
         )
         VendorStaff.objects.create(
-            vendor=cls.vendor_b, branch=cls.branch_b,
-            user=cls.other_vendor_user, role="owner",
+            vendor=cls.vendor_b,
+            branch=cls.branch_b,
+            user=cls.other_vendor_user,
+            role="owner",
         )
 
         # ── PRODUCTS & INVENTORY ───────────────────────────
         cls.category = Category.objects.create(
-            vendor=cls.vendor_a, name="Goods",
+            vendor=cls.vendor_a,
+            name="Goods",
         )
         cls.product = Product.objects.create(
-            vendor=cls.vendor_a, category=cls.category,
-            name="Widget", price=10.00,
+            vendor=cls.vendor_a,
+            category=cls.category,
+            name="Widget",
+            price=10.00,
         )
         Inventory.objects.create(
-            product=cls.product, branch=cls.branch_a, quantity=50,
+            product=cls.product,
+            branch=cls.branch_a,
+            quantity=50,
         )
 
         # ── ORDERS ─────────────────────────────────────────
         cls.order_a = Order.objects.create(
-            vendor=cls.vendor_a, branch=cls.branch_a,
-            customer_name="Alice", total_amount=20.00,
-            created_by=cls.owner_user, status="confirmed",
+            vendor=cls.vendor_a,
+            branch=cls.branch_a,
+            customer_name="Alice",
+            total_amount=20.00,
+            created_by=cls.owner_user,
+            status="confirmed",
         )
         cls.order_b = Order.objects.create(
-            vendor=cls.vendor_b, branch=cls.branch_b,
-            customer_name="Bob", total_amount=30.00,
-            created_by=cls.other_vendor_user, status="confirmed",
+            vendor=cls.vendor_b,
+            branch=cls.branch_b,
+            customer_name="Bob",
+            total_amount=30.00,
+            created_by=cls.other_vendor_user,
+            status="confirmed",
         )
 
         # ── DELIVERIES ─────────────────────────────────────
@@ -100,6 +127,7 @@ class DeliveryTestCaseBase(APITestCase):
 # =====================================================================
 #  DELIVERY LISTING & MULTI-TENANT ISOLATION
 # =====================================================================
+
 
 class DeliveryListTests(DeliveryTestCaseBase):
 
@@ -141,6 +169,7 @@ class DeliveryListTests(DeliveryTestCaseBase):
 # =====================================================================
 #  ASSIGN RIDER
 # =====================================================================
+
 
 class AssignRiderTests(DeliveryTestCaseBase):
 
@@ -223,6 +252,7 @@ class AssignRiderTests(DeliveryTestCaseBase):
 # =====================================================================
 #  UPDATE DELIVERY STATUS
 # =====================================================================
+
 
 class UpdateDeliveryStatusTests(DeliveryTestCaseBase):
 
@@ -352,6 +382,7 @@ class UpdateDeliveryStatusTests(DeliveryTestCaseBase):
 # =====================================================================
 #  DELIVERY CREATION & IDEMPOTENCY
 # =====================================================================
+
 
 class DeliveryCreationTests(DeliveryTestCaseBase):
 

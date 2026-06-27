@@ -1,12 +1,11 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
-
 from django.utils import timezone
-from datetime import timedelta
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
@@ -27,9 +26,7 @@ class AuthTestCaseBase(APITestCase):
         client = APIClient()
         if user:
             refresh = RefreshToken.for_user(user)
-            client.credentials(
-                HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}"
-            )
+            client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
         return client
 
     def _register_payload(self, overrides=None):
@@ -48,6 +45,7 @@ class AuthTestCaseBase(APITestCase):
 # =====================================================================
 #  REGISTRATION
 # =====================================================================
+
 
 class RegistrationTests(AuthTestCaseBase):
 
@@ -106,6 +104,7 @@ class RegistrationTests(AuthTestCaseBase):
 # =====================================================================
 #  EMAIL VERIFICATION
 # =====================================================================
+
 
 class EmailVerificationTests(AuthTestCaseBase):
 
@@ -182,6 +181,7 @@ class EmailVerificationTests(AuthTestCaseBase):
 #  RESEND VERIFICATION
 # =====================================================================
 
+
 class ResendVerificationTests(AuthTestCaseBase):
 
     def setUp(self):
@@ -251,6 +251,7 @@ class ResendVerificationTests(AuthTestCaseBase):
 # =====================================================================
 #  PASSWORD RESET
 # =====================================================================
+
 
 class PasswordResetTests(AuthTestCaseBase):
 
@@ -361,6 +362,7 @@ class PasswordResetTests(AuthTestCaseBase):
 #  ME ENDPOINT
 # =====================================================================
 
+
 class MeEndpointTests(AuthTestCaseBase):
 
     def test_me_authenticated(self):
@@ -387,6 +389,7 @@ class MeEndpointTests(AuthTestCaseBase):
 # =====================================================================
 #  JWT AUTH
 # =====================================================================
+
 
 class JWTAuthTests(AuthTestCaseBase):
 
@@ -443,6 +446,7 @@ class JWTAuthTests(AuthTestCaseBase):
 # =====================================================================
 #  PROTECTED ENDPOINT
 # =====================================================================
+
 
 class ProtectedEndpointTests(AuthTestCaseBase):
 

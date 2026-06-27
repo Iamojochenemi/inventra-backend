@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Payment, Invoice, TransactionRecord, PaymentWebhook
+from .models import Invoice, Payment, PaymentWebhook, TransactionRecord
 
 
 @admin.register(Payment)
@@ -18,7 +18,13 @@ class InvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(TransactionRecord)
 class TransactionRecordAdmin(admin.ModelAdmin):
-    list_display = ("reference_id", "payment", "transaction_type", "amount", "created_at")
+    list_display = (
+        "reference_id",
+        "payment",
+        "transaction_type",
+        "amount",
+        "created_at",
+    )
 
 
 @admin.register(PaymentWebhook)

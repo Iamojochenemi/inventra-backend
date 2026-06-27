@@ -2,12 +2,12 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.inventory.models import Category, Inventory, Product
+from apps.orders.models import Order, OrderStatusLog
 from apps.vendors.models import Vendor, VendorStaff
-from apps.inventory.models import Product, Category, Inventory
-from apps.orders.models import Order, OrderItem, OrderStatusLog
 
 User = get_user_model()
 
@@ -165,6 +165,7 @@ class OrderTestCaseBase(APITestCase):
 #  ORDER CREATION
 # =====================================================================
 
+
 class OrderCreateTests(OrderTestCaseBase):
 
     @patch("apps.payments.services.create_payment_for_order")
@@ -207,7 +208,10 @@ class OrderCreateTests(OrderTestCaseBase):
         payload = self._order_create_payload(self.branch_a, self.product_a.id, 1)
         response = client.post("/api/orders/create/", payload, format="json")
         # DRF returns 401 for unauthenticated with IsAuthenticated permission
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        self.assertIn(
+            response.status_code,
+            [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN],
+        )
 
     def test_create_order_insufficient_stock(self):
         """Order with quantity > available stock is rejected."""
@@ -266,6 +270,7 @@ class OrderCreateTests(OrderTestCaseBase):
 # =====================================================================
 #  ORDER LISTING & DETAIL
 # =====================================================================
+
 
 class OrderListDetailTests(OrderTestCaseBase):
 
@@ -326,6 +331,7 @@ class OrderListDetailTests(OrderTestCaseBase):
 #  ORDER STATUS TRANSITIONS
 # =====================================================================
 
+
 class OrderStatusTransitionTests(OrderTestCaseBase):
 
     def setUp(self):
@@ -348,7 +354,9 @@ class OrderStatusTransitionTests(OrderTestCaseBase):
 
     @patch("apps.orders.views.send_notification_task.delay")
     @patch("apps.orders.views.create_delivery_from_order")
-    def test_valid_transition_pending_to_confirmed(self, mock_delivery, mock_notification):
+    def test_valid_transition_pending_to_confirmed(
+        self, mock_delivery, mock_notification
+    ):
         """pending → confirmed is a valid transition."""
         client = self._client(self.owner_user)
         response = client.post(
@@ -375,7 +383,9 @@ class OrderStatusTransitionTests(OrderTestCaseBase):
 
     @patch("apps.orders.views.send_notification_task.delay")
     @patch("apps.orders.views.create_delivery_from_order")
-    def test_valid_transition_confirmed_to_completed(self, mock_delivery, mock_notification):
+    def test_valid_transition_confirmed_to_completed(
+        self, mock_delivery, mock_notification
+    ):
         """confirmed → completed is a valid transition."""
         # First transition to confirmed
         self.order.status = "confirmed"
@@ -428,7 +438,10 @@ class OrderStatusTransitionTests(OrderTestCaseBase):
             format="json",
         )
 
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        self.assertIn(
+            response.status_code,
+            [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN],
+        )
 
     @patch("apps.orders.views.send_notification_task.delay")
     def test_invalid_status_value_returns_400(self, mock_notification):
@@ -468,6 +481,7 @@ class OrderStatusTransitionTests(OrderTestCaseBase):
 # =====================================================================
 #  MULTI-TENANT ISOLATION
 # =====================================================================
+
 
 class MultiTenantIsolationTests(OrderTestCaseBase):
 

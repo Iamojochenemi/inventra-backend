@@ -1,4 +1,4 @@
-from django.db.models import Sum, F
+from django.db.models import F, Sum
 
 from apps.orders.models import Order
 
@@ -12,7 +12,8 @@ def get_profit_loss(vendor):
     across the OrderItem join.
     """
     agg = Order.objects.filter(
-        vendor=vendor, status="completed",
+        vendor=vendor,
+        status="completed",
     ).aggregate(
         revenue=Sum("total_amount"),
         cogs=Sum(F("items__quantity") * F("items__product__price")),

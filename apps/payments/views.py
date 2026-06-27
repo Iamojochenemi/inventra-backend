@@ -1,21 +1,21 @@
-from drf_spectacular.utils import extend_schema, OpenApiResponse
 import json
 import logging
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
-
-from django.http import JsonResponse, FileResponse
+from django.http import FileResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.common.mixins import TenantIsolationMixin
+from apps.vendors.services import validate_vendor_access
 
+from .models import Invoice, Payment
 from .serializers import PaymentInitializeSerializer
-from .models import Payment, Invoice
 from .services import (
     PaystackService,
     PaystackVerificationError,
@@ -23,7 +23,6 @@ from .services import (
     process_payment_success,
     record_payment_webhook,
 )
-from apps.vendors.services import validate_vendor_access
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,9 @@ def _get_client_meta(request):
     request=PaymentInitializeSerializer,
     responses={
         201: OpenApiResponse(description="Payment initialized with authorization URL"),
-        400: OpenApiResponse(description="Validation error or payment initialization failed"),
+        400: OpenApiResponse(
+            description="Validation error or payment initialization failed"
+        ),
     },
 )
 class PaymentInitializeView(APIView):
@@ -78,25 +79,29 @@ class PaymentInitializeView(APIView):
                     order_id=payment.order.id,
                 )
 
-                logger.info(
-                    f"Transaction initialized for payment {payment.reference}"
-                )
+                logger.info(f"Transaction initialized for payment {payment.reference}")
 
-                return Response({
-                    "reference": payment.reference,
-                    "amount": payment.amount,
-                    "currency": payment.currency,
-                    "status": payment.status,
-                    "authorization_url": transaction_data.get("authorization_url"),
-                    "access_code": transaction_data.get("access_code"),
-                }, status=status.HTTP_201_CREATED)
+                return Response(
+                    {
+                        "reference": payment.reference,
+                        "amount": payment.amount,
+                        "currency": payment.currency,
+                        "status": payment.status,
+                        "authorization_url": transaction_data.get("authorization_url"),
+                        "access_code": transaction_data.get("access_code"),
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
 
             except Exception as e:
                 logger.error(f"Failed to initialize transaction: {str(e)}")
-                return Response({
-                    "error": "Failed to initialize payment",
-                    "details": str(e),
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "error": "Failed to initialize payment",
+                        "details": str(e),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -138,7 +143,9 @@ class PaystackWebhookView(APIView):
 
         event = payload.get("event")
         data = payload.get("data", {})
-        event_id = data.get("id") or payload.get("id") or data.get("reference", "unknown")
+        event_id = (
+            data.get("id") or payload.get("id") or data.get("reference", "unknown")
+        )
 
         if event != "charge.success":
             logger.info(f"Ignoring webhook event: {event}")
@@ -156,7 +163,10 @@ class PaystackWebhookView(APIView):
         except Payment.DoesNotExist:
             logger.error(f"Payment not found for reference: {reference}")
             record_payment_webhook(
-                event, str(event_id), payload, status="failed",
+                event,
+                str(event_id),
+                payload,
+                status="failed",
                 error_message="Payment not found",
             )
             return JsonResponse({"error": "Payment not found"}, status=404)
@@ -183,11 +193,13 @@ class PaystackWebhookView(APIView):
                 f"Payment {reference} processed successfully for order {payment.order.id}"
             )
 
-            return JsonResponse({
-                "status": "success",
-                "payment": payment.reference,
-                "order_id": payment.order.id,
-            })
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "payment": payment.reference,
+                    "order_id": payment.order.id,
+                }
+            )
 
         except PaystackVerificationError as e:
             logger.error(f"Payment verification failed for {reference}: {str(e)}")
@@ -197,23 +209,37 @@ class PaystackWebhookView(APIView):
                 reason=str(e),
             )
             record_payment_webhook(
-                event, str(event_id), payload, payment=payment,
-                status="failed", error_message=str(e),
+                event,
+                str(event_id),
+                payload,
+                payment=payment,
+                status="failed",
+                error_message=str(e),
             )
-            return JsonResponse({
-                "error": "Payment verification failed",
-                "details": str(e),
-            }, status=400)
+            return JsonResponse(
+                {
+                    "error": "Payment verification failed",
+                    "details": str(e),
+                },
+                status=400,
+            )
         except Exception as e:
             logger.error(f"Webhook processing error for {reference}: {str(e)}")
             record_payment_webhook(
-                event, str(event_id), payload, payment=payment,
-                status="failed", error_message=str(e),
+                event,
+                str(event_id),
+                payload,
+                payment=payment,
+                status="failed",
+                error_message=str(e),
             )
-            return JsonResponse({
-                "error": "Processing failed",
-                "details": str(e),
-            }, status=500)
+            return JsonResponse(
+                {
+                    "error": "Processing failed",
+                    "details": str(e),
+                },
+                status=500,
+            )
 
 
 # -------------------------
@@ -234,9 +260,7 @@ class PaymentVerifyView(APIView):
 
     def get(self, request, reference):
         try:
-            payment = Payment.objects.select_related("order").get(
-                reference=reference
-            )
+            payment = Payment.objects.select_related("order").get(reference=reference)
         except Payment.DoesNotExist:
             logger.error(f"Payment not found for verification: {reference}")
             return Response(
@@ -266,9 +290,7 @@ class PaymentVerifyView(APIView):
                     ip_address=ip_address,
                     user_agent=user_agent,
                 )
-                logger.info(
-                    f"Payment {reference} verified and updated to successful"
-                )
+                logger.info(f"Payment {reference} verified and updated to successful")
 
             elif transaction_status == "failed" and payment.status != "failed":
                 paystack_service.handle_failed_payment(
@@ -278,30 +300,40 @@ class PaymentVerifyView(APIView):
                 )
                 logger.info(f"Payment {reference} verified and marked as failed")
 
-            return Response({
-                "reference": payment.reference,
-                "amount": payment.amount,
-                "currency": payment.currency,
-                "status": payment.status,
-                "gateway_status": transaction_status,
-                "gateway_transaction_id": verification_result.get(
-                    "gateway_transaction_id"
-                ),
-                "customer_email": verification_result.get("customer_email"),
-            }, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "reference": payment.reference,
+                    "amount": payment.amount,
+                    "currency": payment.currency,
+                    "status": payment.status,
+                    "gateway_status": transaction_status,
+                    "gateway_transaction_id": verification_result.get(
+                        "gateway_transaction_id"
+                    ),
+                    "customer_email": verification_result.get("customer_email"),
+                },
+                status=status.HTTP_200_OK,
+            )
 
         except PaystackVerificationError as e:
             logger.error(f"Verification failed for {reference}: {str(e)}")
-            return Response({
-                "error": "Verification failed",
-                "details": str(e),
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": "Verification failed",
+                    "details": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
             logger.error(f"Unexpected error verifying {reference}: {str(e)}")
-            return Response({
-                "error": "Verification error",
-                "details": str(e),
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {
+                    "error": "Verification error",
+                    "details": str(e),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 @extend_schema(
     tags=["Invoices"],
@@ -323,18 +355,21 @@ class InvoiceDetailView(TenantIsolationMixin, APIView):
             ),
             pk=pk,
         )
-        return Response({
-            "id": invoice.id,
-            "invoice_number": invoice.invoice_number,
-            "status": invoice.status,
-            "amount": invoice.amount,
-            "currency": invoice.currency,
-            "issued_at": invoice.issued_at,
-            "due_date": invoice.due_date,
-            "paid_at": invoice.paid_at,
-            "order_id": invoice.order_id,
-            "pdf_url": invoice.pdf_file.url if invoice.pdf_file else None,
-        })
+        return Response(
+            {
+                "id": invoice.id,
+                "invoice_number": invoice.invoice_number,
+                "status": invoice.status,
+                "amount": invoice.amount,
+                "currency": invoice.currency,
+                "issued_at": invoice.issued_at,
+                "due_date": invoice.due_date,
+                "paid_at": invoice.paid_at,
+                "order_id": invoice.order_id,
+                "pdf_url": invoice.pdf_file.url if invoice.pdf_file else None,
+            }
+        )
+
 
 @extend_schema(
     tags=["Invoices"],
@@ -359,6 +394,7 @@ class InvoiceDownloadView(TenantIsolationMixin, APIView):
 
         if not invoice.pdf_file:
             from apps.payments.services.invoice_service import save_invoice_pdf
+
             save_invoice_pdf(invoice)
 
         return FileResponse(

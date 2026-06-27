@@ -27,9 +27,7 @@ class Delivery(models.Model):
     }
 
     order = models.OneToOneField(
-        "orders.Order",
-        on_delete=models.CASCADE,
-        related_name="delivery"
+        "orders.Order", on_delete=models.CASCADE, related_name="delivery"
     )
 
     assigned_rider = models.ForeignKey(
@@ -37,32 +35,18 @@ class Delivery(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="deliveries"
+        related_name="deliveries",
     )
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="pending"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
-    recipient_name = models.CharField(
-        max_length=255,
-        blank=True
-    )
+    recipient_name = models.CharField(max_length=255, blank=True)
 
-    delivered_at = models.DateTimeField(
-        null=True,
-        blank=True
-    )
+    delivered_at = models.DateTimeField(null=True, blank=True)
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
+    updated_at = models.DateTimeField(auto_now=True)
 
     def change_status(self, new_status, changed_by=None):
 
@@ -71,9 +55,7 @@ class Delivery(models.Model):
         allowed = self.ALLOWED_TRANSITIONS.get(old_status, [])
 
         if new_status not in allowed:
-            raise ValueError(
-                f"Invalid transition from {old_status} to {new_status}"
-            )
+            raise ValueError(f"Invalid transition from {old_status} to {new_status}")
 
         self.status = new_status
 
@@ -87,7 +69,7 @@ class Delivery(models.Model):
             vendor_id=self.order.vendor.id,
             notification_type="delivery",
             title="Delivery Update",
-            message=f"Order #{self.order.id} is now {new_status}"
+            message=f"Order #{self.order.id} is now {new_status}",
         )
 
         return self
@@ -104,36 +86,23 @@ class DeliveryLog(models.Model):
     )
 
     delivery = models.ForeignKey(
-        Delivery,
-        on_delete=models.CASCADE,
-        related_name="logs"
+        Delivery, on_delete=models.CASCADE, related_name="logs"
     )
 
-    event_type = models.CharField(
-        max_length=30,
-        choices=EVENT_TYPES
-    )
+    event_type = models.CharField(max_length=30, choices=EVENT_TYPES)
 
-    previous_value = models.CharField(
-        max_length=255,
-        blank=True
-    )
+    previous_value = models.CharField(max_length=255, blank=True)
 
-    new_value = models.CharField(
-        max_length=255,
-        blank=True
-    )
+    new_value = models.CharField(max_length=255, blank=True)
 
     changed_by = models.ForeignKey(
         "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="delivery_logs"
+        related_name="delivery_logs",
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Delivery {self.delivery.id} - {self.event_type}"

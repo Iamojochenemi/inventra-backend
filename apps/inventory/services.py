@@ -10,12 +10,7 @@ def initialize_product_inventory(product):
     branches = product.vendor.branches.all()
 
     inventory_records = [
-        Inventory(
-            product=product,
-            branch=branch,
-            quantity=0
-        )
-        for branch in branches
+        Inventory(product=product, branch=branch, quantity=0) for branch in branches
     ]
 
     Inventory.objects.bulk_create(inventory_records)

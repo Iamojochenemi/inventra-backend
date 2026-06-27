@@ -1,12 +1,14 @@
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from apps.orders.models import Order, OrderItem
-from apps.inventory.models import Inventory, Product
 from apps.audit_logs.services import create_audit_log
+from apps.inventory.models import Inventory, Product
+from apps.orders.models import Order, OrderItem
 
 
-def create_order_with_items(*, vendor, branch, created_by, customer_name, customer_phone, items_data):
+def create_order_with_items(
+    *, vendor, branch, created_by, customer_name, customer_phone, items_data
+):
 
     with transaction.atomic():
         order = Order.objects.create(
@@ -23,25 +25,30 @@ def create_order_with_items(*, vendor, branch, created_by, customer_name, custom
             product = Product.objects.get(id=item["product"])
             quantity = item["quantity"]
 
-            inventory = Inventory.objects.select_for_update().filter(
-                product=product,
-                branch=branch
-            ).first()
+            inventory = (
+                Inventory.objects.select_for_update()
+                .filter(product=product, branch=branch)
+                .first()
+            )
 
             if not inventory:
-                raise ValidationError({
-                    "error": "No inventory found",
-                    "product": product.name,
-                    "branch": branch.id
-                })
+                raise ValidationError(
+                    {
+                        "error": "No inventory found",
+                        "product": product.name,
+                        "branch": branch.id,
+                    }
+                )
 
             if inventory.quantity < quantity:
-                raise ValidationError({
-                    "error": "Insufficient stock",
-                    "product": product.name,
-                    "requested": quantity,
-                    "available": inventory.quantity
-                })
+                raise ValidationError(
+                    {
+                        "error": "Insufficient stock",
+                        "product": product.name,
+                        "requested": quantity,
+                        "available": inventory.quantity,
+                    }
+                )
 
             inventory.quantity -= quantity
             inventory.save()
@@ -50,7 +57,7 @@ def create_order_with_items(*, vendor, branch, created_by, customer_name, custom
                 order=order,
                 product=product,
                 quantity=quantity,
-                unit_price=product.price
+                unit_price=product.price,
             )
 
             total += quantity * product.price

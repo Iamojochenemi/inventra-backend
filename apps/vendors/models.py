@@ -1,12 +1,10 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class Vendor(models.Model):
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="vendors"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="vendors"
     )
 
     name = models.CharField(max_length=255)
@@ -21,9 +19,7 @@ class Vendor(models.Model):
 
 class Branch(models.Model):
     vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.CASCADE,
-        related_name="branches"
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="branches"
     )
 
     name = models.CharField(max_length=255)
@@ -49,9 +45,7 @@ class VendorStaff(models.Model):
     )
 
     vendor = models.ForeignKey(
-        "vendors.Vendor",
-        on_delete=models.CASCADE,
-        related_name="staff"
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="staff"
     )
 
     branch = models.ForeignKey(
@@ -59,13 +53,10 @@ class VendorStaff(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="staff_members"
+        related_name="staff_members",
     )
 
-    user = models.ForeignKey(
-        "accounts.User",
-        on_delete=models.CASCADE
-    )
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE)
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
 
@@ -81,8 +72,7 @@ class VendorStaff(models.Model):
 
             if not main_branch:
                 main_branch = Branch.objects.create(
-                    vendor=self.vendor,
-                    name="Main Branch"
+                    vendor=self.vendor, name="Main Branch"
                 )
 
             self.branch = main_branch
@@ -95,10 +85,9 @@ class VendorStaff(models.Model):
 
 class VendorSettings(models.Model):
     """Vendor-specific configuration and preferences."""
+
     vendor = models.OneToOneField(
-        Vendor,
-        on_delete=models.CASCADE,
-        related_name="settings"
+        Vendor, on_delete=models.CASCADE, related_name="settings"
     )
 
     # Business settings
@@ -126,8 +115,10 @@ class VendorSettings(models.Model):
     def __str__(self):
         return f"Settings for {self.vendor.name}"
 
+
 class VendorInvitation(models.Model):
     """Invite staff members to join a vendor."""
+
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("accepted", "Accepted"),
@@ -136,34 +127,22 @@ class VendorInvitation(models.Model):
     )
 
     vendor = models.ForeignKey(
-        Vendor,
-        on_delete=models.CASCADE,
-        related_name="invitations"
+        Vendor, on_delete=models.CASCADE, related_name="invitations"
     )
 
     email = models.EmailField()
 
-    role = models.CharField(
-        max_length=20,
-        choices=VendorStaff.ROLE_CHOICES
-    )
+    role = models.CharField(max_length=20, choices=VendorStaff.ROLE_CHOICES)
 
-    invitation_token = models.CharField(
-        max_length=255,
-        unique=True
-    )
+    invitation_token = models.CharField(max_length=255, unique=True)
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="pending"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     created_by = models.ForeignKey(
         "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
-        related_name="sent_invitations"
+        related_name="sent_invitations",
     )
 
     accepted_by = models.ForeignKey(
@@ -171,7 +150,7 @@ class VendorInvitation(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="accepted_invitations"
+        related_name="accepted_invitations",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -185,6 +164,7 @@ class VendorInvitation(models.Model):
     def is_expired(self):
         """Check if invitation has expired."""
         from django.utils import timezone
+
         return timezone.now() > self.expires_at
 
     def __str__(self):
