@@ -1,0 +1,39 @@
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | migrations
+  | __pycache__
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip = ["venv", ".venv", "migrations"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+]
+
+ignore = [
+    "E501",
+]
+
+exclude = [
+    "venv",
+    ".venv",
+    "migrations",
+]
